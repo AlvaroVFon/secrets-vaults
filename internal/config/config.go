@@ -4,6 +4,8 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -11,14 +13,71 @@ import (
 var ErrLoadingConfig = errors.New("unexpected error loading config")
 
 type Config struct {
-	AppConfig AppConfig
-	DBConfig  DatabaseConfig
+	AppConfig AppConfig      `json:"app_config"`
+	DBConfig  DatabaseConfig `json:"db_config"`
 }
 
 func LoadConfig(path string) (*Config, error) {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(path); err != nil {
 		return nil, fmt.Errorf("%w, %s", ErrLoadingConfig, err.Error())
 	}
 
-	return &Config{}, nil
+	// APP CONFIG
+	env, err := getStringEnvVar("ENV", "")
+	if err != nil {
+		return nil, err
+	}
+
+	appConfig, err := NewAppConfig(env)
+	if err != nil {
+		return nil, err
+	}
+
+	// DB CONFIG
+	dbURL, err := getStringEnvVar("DBURL", "http://localhost:5432")
+	if err != nil {
+		return nil, err
+	}
+	dbName, err := getStringEnvVar("DBNAME", "test")
+	if err != nil {
+		return nil, err
+	}
+
+	dbConfig, err := NewDatabaseConfig(dbURL, dbName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Config{
+		AppConfig: *appConfig,
+		DBConfig:  *dbConfig,
+	}, nil
+}
+
+func getStringEnvVar(key, defaultValue string) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("%w: %q", ErrEmptyString, "key")
+	}
+
+	envVar := os.Getenv(key)
+	if envVar == "" {
+		return defaultValue, nil
+	}
+
+	return envVar, nil
+}
+
+func getIntEnvVar(key string) (int, error) {
+	if key == "" {
+		return 0, fmt.Errorf("%w: %q", ErrEmptyString, "key")
+	}
+
+	envVar := os.Getenv(key)
+
+	intEnvVar, err := strconv.Atoi(envVar)
+	if err != nil {
+		return 0, err
+	}
+
+	return intEnvVar, nil
 }

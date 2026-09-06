@@ -20,7 +20,7 @@ func NewAppConfig(env string) (*AppConfig, error) {
 		return nil, ErrEnvironmentNotProvided
 	}
 
-	validEnv := []string{"development", "production"}
+	validEnv := []string{"test", "development", "production"}
 
 	if !slices.Contains(validEnv, env) {
 		return nil, fmt.Errorf("%w: %q, environment must be one of %v", ErrInvalidEnvironment, env, validEnv)
