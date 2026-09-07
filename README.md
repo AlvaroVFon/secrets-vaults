@@ -22,7 +22,6 @@ Algo similar a `AWS Secrets Manager`
   type Role struct {
     ID string
     Role string
-    Permissions []string
   }
   ```
 

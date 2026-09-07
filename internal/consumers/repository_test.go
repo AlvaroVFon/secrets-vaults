@@ -38,7 +38,7 @@ func createRoleForConsumer(t *testing.T, repo *ConsumersRepository) string {
 	t.Helper()
 
 	ctx := context.Background()
-	role, err := roles.NewRole("consumer-role")
+	role, err := roles.NewRole("admin")
 	if err != nil {
 		t.Fatalf("new role: %v", err)
 	}

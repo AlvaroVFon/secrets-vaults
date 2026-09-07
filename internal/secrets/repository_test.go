@@ -41,7 +41,7 @@ func createConsumerForSecret(t *testing.T, repo *SecretsRepository) string {
 	ctx := context.Background()
 
 	roleRepo := roles.NewRoleRepository(repo.store)
-	role, err := roles.NewRole("secret-consumer-role")
+	role, err := roles.NewRole("admin")
 	if err != nil {
 		t.Fatalf("new role: %v", err)
 	}

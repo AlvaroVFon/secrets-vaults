@@ -81,7 +81,7 @@ func TestRoleRepository_FindByID(t *testing.T) {
 	repo := setupRoleRepo(t)
 	ctx := context.Background()
 
-	role, err := NewRole("editor")
+	role, err := NewRole("superadmin")
 	if err != nil {
 		t.Fatalf("new role: %v", err)
 	}
