@@ -1,5 +1,3 @@
-//go:build integration
-
 // Package roles
 package roles
 

@@ -15,6 +15,9 @@ func Connect(t *testing.T) (*pgx.Conn, error) {
 
 	ctx := context.Background()
 	dbURL := os.Getenv("POSTGRES_URL")
+	if dbURL == "" {
+		dbURL = "postgres://postgres:postgres@localhost:4321/test?sslmode=disable"
+	}
 	conn, err := pgx.Connect(ctx, dbURL)
 	if err != nil {
 		return nil, err

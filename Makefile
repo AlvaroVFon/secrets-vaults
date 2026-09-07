@@ -2,7 +2,7 @@ MIGRATE        := go run -tags 'postgres' github.com/golang-migrate/migrate/v4/c
 MIGRATIONS_DIR := migrations
 DATABASE_URL   ?= postgres://postgres:postgres@localhost:5432/app?sslmode=disable
 
-.PHONY: help migrate-up migrate-down migrate-down-all migrate-force migrate-version migrate-create migrate-reset docker-test docker-test-down
+.PHONY: help migrate-up migrate-down migrate-down-all migrate-force migrate-version migrate-create migrate-reset test docker-test docker-test-down
 
 help: ## Muestra los comandos disponibles
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -31,6 +31,10 @@ migrate-reset: migrate-down-all migrate-up
 docker-test: ## Levanta la infraestructura de test (BD postgres) para integración
 	docker compose -f internal/tests/docker-compose.yml --env-file .env.test up -d postgres --wait
 	docker compose -f internal/tests/docker-compose.yml --env-file .env.test run --rm migrate
+
+test: ## Levanta la BD de test y ejecuta todos los tests
+	$(MAKE) docker-test
+	go test -p 1 ./...
 
 docker-test-down: ## Detiene y elimina la infraestructura de test
 	docker compose -f internal/tests/docker-compose.yml --env-file .env.test down

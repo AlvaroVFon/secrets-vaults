@@ -1,5 +1,3 @@
-//go:build integration
-
 // Package secrets
 package secrets
 
@@ -130,5 +128,82 @@ func TestSecretsRepository_FindByKeyAndConsumerID_InvalidConsumerID(t *testing.T
 	_, err := repo.FindByKeyAndConsumerID(ctx, "db.password", "not-a-uuid")
 	if err == nil {
 		t.Fatal("expected error for invalid consumerID, got nil")
+	}
+}
+
+func TestSecretsRepository_FindAllByConsumerID(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	consumerID := createConsumerForSecret(t, repo)
+
+	expected := []Secret{
+		{Key: "db.password", Value: "s3cret"},
+		{Key: "db.host", Value: "localhost"},
+		{Key: "api.key", Value: "key-123"},
+	}
+
+	for _, s := range expected {
+		secret, err := NewSecret(s.Key, s.Value, consumerID)
+		if err != nil {
+			t.Fatalf("new secret: %v", err)
+		}
+		if err := repo.Create(ctx, *secret); err != nil {
+			t.Fatalf("create secret: %v", err)
+		}
+	}
+
+	got, err := repo.FindAllByConsumerID(ctx, consumerID)
+	if err != nil {
+		t.Fatalf("find all by consumerID: %v", err)
+	}
+
+	if len(got) != len(expected) {
+		t.Fatalf("expected %d secrets, got %d", len(expected), len(got))
+	}
+
+	for i, s := range expected {
+		if got[i].Key != s.Key {
+			t.Errorf("secret[%d] expected Key %q, got %q", i, s.Key, got[i].Key)
+		}
+		if got[i].Value != s.Value {
+			t.Errorf("secret[%d] expected Value %q, got %q", i, s.Value, got[i].Value)
+		}
+	}
+}
+
+func TestSecretsRepository_FindAllByConsumerID_EmptyConsumerID(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	_, err := repo.FindAllByConsumerID(ctx, "")
+	if !errors.Is(err, ErrEmptyArgument) {
+		t.Fatalf("expected ErrEmptyArgument, got %v", err)
+	}
+}
+
+func TestSecretsRepository_FindAllByConsumerID_InvalidConsumerID(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	_, err := repo.FindAllByConsumerID(ctx, "not-a-uuid")
+	if err == nil {
+		t.Fatal("expected error for invalid consumerID, got nil")
+	}
+}
+
+func TestSecretsRepository_FindAllByConsumerID_NoSecrets(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	consumerID := createConsumerForSecret(t, repo)
+
+	got, err := repo.FindAllByConsumerID(ctx, consumerID)
+	if err != nil {
+		t.Fatalf("find all by consumerID: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("expected 0 secrets, got %d", len(got))
 	}
 }
