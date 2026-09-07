@@ -53,3 +53,10 @@ func TestNewConsumer_EmptyRoleID(t *testing.T) {
 		t.Fatalf("expected ErrEmptyArgument, got %v", err)
 	}
 }
+
+func TestNewConsumer_InvalidRoleID(t *testing.T) {
+	_, err := NewConsumer("consumer1", "secret", "not-a-uuid")
+	if !errors.Is(err, ErrInvalidUUID) {
+		t.Fatalf("expected ErrInvalidUUID, got %v", err)
+	}
+}

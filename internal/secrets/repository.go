@@ -1,0 +1,55 @@
+package secrets
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+)
+
+var ErrNotFound = errors.New("not found")
+
+type SecretsRepository struct {
+	store *pgx.Conn
+}
+
+func NewSecretsRepository(store *pgx.Conn) *SecretsRepository {
+	return &SecretsRepository{
+		store: store,
+	}
+}
+
+func (r *SecretsRepository) Create(ctx context.Context, secret Secret) error {
+	query := "INSERT INTO secrets (key, value, consumer_id) VALUES ($1, $2, $3)"
+	if _, err := r.store.Exec(ctx, query, secret.Key, secret.Value, secret.ConsumerID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *SecretsRepository) FindByKeyAndConsumerID(ctx context.Context, key, consumerID string) (*Secret, error) {
+	if key == "" {
+		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "key")
+	}
+	if consumerID == "" {
+		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "consumerID")
+	}
+	if _, err := uuid.Parse(consumerID); err != nil {
+		return nil, err
+	}
+
+	query := "SELECT * FROM secrets WHERE consumer_id=$2 AND key=$1"
+
+	var secret Secret
+
+	if err := r.store.QueryRow(ctx, query, key, consumerID).Scan(&secret.Key, &secret.Value, &secret.ConsumerID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("secret %w with key: %q not found for consummerID: %q", ErrNotFound, key, consumerID)
+		}
+		return nil, err
+	}
+
+	return &secret, nil
+}
