@@ -34,11 +34,11 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	// DB CONFIG
-	dbURL, err := getStringEnvVar("DBURL", "http://localhost:5432")
+	dbURL, err := getStringEnvVar("POSTGRES_URL", "http://localhost:5432")
 	if err != nil {
 		return nil, err
 	}
-	dbName, err := getStringEnvVar("DBNAME", "test")
+	dbName, err := getStringEnvVar("POSTGRES_DB", "test")
 	if err != nil {
 		return nil, err
 	}

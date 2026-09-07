@@ -8,6 +8,10 @@ Algo similar a `AWS Secrets Manager`
 
 ## Componentes
 
+- Carga de configuraciones desde `config.go`
+
+- Database para integration test dedicada, preparar setup y teardown. Mantener aislamiento entre test.
+
 - Los secretos de este proyecto serán gestionados mediante variables de entorno
   usando un módulo de configuración
 
@@ -51,7 +55,6 @@ type Secret struct {
 
 ## Decisiones técnicas
 
-- BDD: PostgreSQL
-- Uso de `sqlc`
+- BDD: PostgreSQL con `pgx v5`
 - Usaremos `golang-migrate` para las migraciones
 - Para la API, usaremos únicamente `stdlib`
