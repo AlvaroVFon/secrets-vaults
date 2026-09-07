@@ -193,7 +193,7 @@ func TestGetIntEnvVar(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
-	cleanEnv(t, "ENV", "DBURL", "DBNAME")
+	cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
 
 	t.Run("invalid path returns error", func(t *testing.T) {
 		_, err := LoadConfig("/nonexistent/.env")
@@ -206,8 +206,8 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("valid config file", func(t *testing.T) {
-		cleanEnv(t, "ENV", "DBURL", "DBNAME")
-		content := "ENV=development\nDBURL=http://localhost:5432\nDBNAME=mydb\n"
+		cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
+		content := "ENV=development\nPOSTGRES_URL=http://localhost:5432\nPOSTGRES_DB=mydb\n"
 		path := writeTempEnv(t, content)
 
 		got, err := LoadConfig(path)
@@ -226,8 +226,8 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("missing ENV uses empty string causing AppConfig error", func(t *testing.T) {
-		cleanEnv(t, "ENV", "DBURL", "DBNAME")
-		content := "DBURL=http://localhost:5432\nDBNAME=test\n"
+		cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
+		content := "POSTGRES_URL=http://localhost:5432\nPOSTGRES_DB=test\n"
 		path := writeTempEnv(t, content)
 
 		_, err := LoadConfig(path)
@@ -240,8 +240,8 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("invalid ENV value causes AppConfig error", func(t *testing.T) {
-		cleanEnv(t, "ENV", "DBURL", "DBNAME")
-		content := "ENV=staging\nDBURL=http://localhost:5432\nDBNAME=test\n"
+		cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
+		content := "ENV=staging\nPOSTGRES_URL=http://localhost:5432\nPOSTGRES_DB=test\n"
 		path := writeTempEnv(t, content)
 
 		_, err := LoadConfig(path)
@@ -254,8 +254,8 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("missing DBNAME uses default", func(t *testing.T) {
-		cleanEnv(t, "ENV", "DBURL", "DBNAME")
-		content := "ENV=test\nDBURL=http://localhost:5432\n"
+		cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
+		content := "ENV=test\nPOSTGRES_URL=http://localhost:5432\n"
 		path := writeTempEnv(t, content)
 
 		got, err := LoadConfig(path)
@@ -268,8 +268,8 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("missing DBURL uses default", func(t *testing.T) {
-		cleanEnv(t, "ENV", "DBURL", "DBNAME")
-		content := "ENV=test\nDBNAME=mydb\n"
+		cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
+		content := "ENV=test\nPOSTGRES_DB=mydb\n"
 		path := writeTempEnv(t, content)
 
 		got, err := LoadConfig(path)
@@ -282,7 +282,7 @@ func TestLoadConfig(t *testing.T) {
 	})
 
 	t.Run("all defaults", func(t *testing.T) {
-		cleanEnv(t, "ENV", "DBURL", "DBNAME")
+		cleanEnv(t, "ENV", "POSTGRES_URL", "POSTGRES_DB")
 		content := "ENV=production\n"
 		path := writeTempEnv(t, content)
 
