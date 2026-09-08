@@ -29,31 +29,6 @@ func (r *SecretsRepository) Create(ctx context.Context, secret Secret) error {
 	return nil
 }
 
-func (r *SecretsRepository) FindByKeyAndConsumerID(ctx context.Context, key, consumerID string) (*Secret, error) {
-	if key == "" {
-		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "key")
-	}
-	if consumerID == "" {
-		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "consumerID")
-	}
-	if _, err := uuid.Parse(consumerID); err != nil {
-		return nil, err
-	}
-
-	query := "SELECT * FROM secrets WHERE consumer_id=$2 AND key=$1"
-
-	var secret Secret
-
-	if err := r.store.QueryRow(ctx, query, key, consumerID).Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("secret %w with key: %q not found for consummerID: %q", ErrNotFound, key, consumerID)
-		}
-		return nil, err
-	}
-
-	return &secret, nil
-}
-
 func (r *SecretsRepository) FindAllByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
 	if consumerID == "" {
 		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "consumerID")
