@@ -1,0 +1,1 @@
+ALTER TABLE consumers ADD CONSTRAINT consumers_name_key UNIQUE (name);

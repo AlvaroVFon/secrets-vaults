@@ -1,0 +1,1 @@
+ALTER TABLE consumers DROP CONSTRAINT IF EXISTS consumers_name_key;
