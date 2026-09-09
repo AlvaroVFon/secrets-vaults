@@ -7,20 +7,41 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
 type mockRepository struct {
-	createFunc  func(ctx context.Context, secret Secret) error
-	findAllFunc func(ctx context.Context, consumerID string) ([]Secret, error)
+	createFunc              func(ctx context.Context, secret Secret) error
+	updateFunc              func(ctx context.Context, req UpdateSecretRequest) error
+	deleteFunc              func(ctx context.Context, id string) error
+	findByIDFunc            func(ctx context.Context, id string) (*Secret, error)
+	findAllFunc             func(ctx context.Context) ([]Secret, error)
+	findAllByConsumerIDFunc func(ctx context.Context, consumerID string) ([]Secret, error)
 }
 
 func (m *mockRepository) Create(ctx context.Context, secret Secret) error {
 	return m.createFunc(ctx, secret)
 }
 
+func (m *mockRepository) Update(ctx context.Context, req UpdateSecretRequest) error {
+	return m.updateFunc(ctx, req)
+}
+
+func (m *mockRepository) DeleteByID(ctx context.Context, id string) error {
+	return m.deleteFunc(ctx, id)
+}
+
+func (m *mockRepository) FindByID(ctx context.Context, id string) (*Secret, error) {
+	return m.findByIDFunc(ctx, id)
+}
+
+func (m *mockRepository) FindAll(ctx context.Context) ([]Secret, error) {
+	return m.findAllFunc(ctx)
+}
+
 func (m *mockRepository) FindAllByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
-	return m.findAllFunc(ctx, consumerID)
+	return m.findAllByConsumerIDFunc(ctx, consumerID)
 }
 
 func TestSecretsService_Create(t *testing.T) {
@@ -101,7 +122,7 @@ func TestSecretsService_FindAllByConsumerID(t *testing.T) {
 	}
 
 	service := NewSecretsService(&mockRepository{
-		findAllFunc: func(_ context.Context, gotConsumerID string) ([]Secret, error) {
+		findAllByConsumerIDFunc: func(_ context.Context, gotConsumerID string) ([]Secret, error) {
 			if gotConsumerID != consumerID {
 				t.Errorf("expected consumerID %q, got %q", consumerID, gotConsumerID)
 			}
@@ -121,7 +142,7 @@ func TestSecretsService_FindAllByConsumerID(t *testing.T) {
 func TestSecretsService_FindAllByConsumerID_Error(t *testing.T) {
 	expectErr := errors.New("repo failed")
 	service := NewSecretsService(&mockRepository{
-		findAllFunc: func(_ context.Context, _ string) ([]Secret, error) {
+		findAllByConsumerIDFunc: func(_ context.Context, _ string) ([]Secret, error) {
 			return nil, expectErr
 		},
 	})
@@ -129,5 +150,67 @@ func TestSecretsService_FindAllByConsumerID_Error(t *testing.T) {
 	_, err := service.FindAllByConsumerID(context.Background(), uuid.New().String())
 	if !errors.Is(err, expectErr) {
 		t.Fatalf("expected %v, got %v", expectErr, err)
+	}
+}
+
+func TestUpdateSecretRequest_Validate(t *testing.T) {
+	validate := validator.New()
+
+	key := "db.password"
+	value := "s3cret"
+	empty := ""
+
+	tests := []struct {
+		name    string
+		req     UpdateSecretRequest
+		wantErr bool
+	}{
+		{
+			name:    "valid full",
+			req:     UpdateSecretRequest{ID: uuid.New().String(), Key: &key, Value: &value},
+			wantErr: false,
+		},
+		{
+			name:    "valid only key",
+			req:     UpdateSecretRequest{ID: uuid.New().String(), Key: &key},
+			wantErr: false,
+		},
+		{
+			name:    "valid only value",
+			req:     UpdateSecretRequest{ID: uuid.New().String(), Value: &value},
+			wantErr: false,
+		},
+		{
+			name:    "missing id",
+			req:     UpdateSecretRequest{Key: &key, Value: &value},
+			wantErr: true,
+		},
+		{
+			name:    "invalid id",
+			req:     UpdateSecretRequest{ID: "not-a-uuid", Key: &key},
+			wantErr: true,
+		},
+		{
+			name:    "empty key pointer allowed by omitempty",
+			req:     UpdateSecretRequest{ID: uuid.New().String(), Key: &empty},
+			wantErr: false,
+		},
+		{
+			name:    "nil key and value allowed",
+			req:     UpdateSecretRequest{ID: uuid.New().String()},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validate.Struct(tt.req)
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected validation error, got nil")
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("expected no validation error, got %v", err)
+			}
+		})
 	}
 }

@@ -10,10 +10,11 @@ import (
 )
 
 type mockRepository struct {
-	createFunc   func(ctx context.Context, consumer Consumer) error
-	findByIDFunc func(ctx context.Context, id string) (*Consumer, error)
-	updateFunc   func(ctx context.Context, req UpdateConsumerRequest) error
-	deleteFunc   func(ctx context.Context, id string) error
+	createFunc       func(ctx context.Context, consumer Consumer) error
+	findByIDFunc     func(ctx context.Context, id string) (*Consumer, error)
+	findByApikeyFunc func(ctx context.Context, apikey string) (*Consumer, error)
+	updateFunc       func(ctx context.Context, req UpdateConsumerRequest) error
+	deleteFunc       func(ctx context.Context, id string) error
 }
 
 func (m *mockRepository) Create(ctx context.Context, consumer Consumer) error {
@@ -22,6 +23,10 @@ func (m *mockRepository) Create(ctx context.Context, consumer Consumer) error {
 
 func (m *mockRepository) FindByID(ctx context.Context, id string) (*Consumer, error) {
 	return m.findByIDFunc(ctx, id)
+}
+
+func (m *mockRepository) FindByApikey(ctx context.Context, apikey string) (*Consumer, error) {
+	return m.findByApikeyFunc(ctx, apikey)
 }
 
 func (m *mockRepository) Update(ctx context.Context, req UpdateConsumerRequest) error {
