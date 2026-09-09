@@ -22,13 +22,10 @@ func setupConsumersRepo(t *testing.T) *ConsumersRepository {
 	}
 
 	t.Cleanup(func() {
-		ctx := context.Background()
 		if err := tests.CleanDB(t, conn); err != nil {
 			t.Logf("cleanup DB: %v", err)
 		}
-		if err := conn.Close(ctx); err != nil {
-			t.Logf("close conn: %v", err)
-		}
+		conn.Close()
 	})
 
 	return NewConsumersRepository(conn)

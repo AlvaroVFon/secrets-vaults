@@ -7,10 +7,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect(t *testing.T) (*pgx.Conn, error) {
+func Connect(t *testing.T) (*pgxpool.Pool, error) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -18,15 +18,15 @@ func Connect(t *testing.T) (*pgx.Conn, error) {
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgres@localhost:4321/test?sslmode=disable"
 	}
-	conn, err := pgx.Connect(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return conn, nil
+	return pool, nil
 }
 
-func CleanDB(t *testing.T, db *pgx.Conn) error {
+func CleanDB(t *testing.T, db *pgxpool.Pool) error {
 	t.Helper()
 
 	ctx := context.Background()

@@ -8,7 +8,7 @@ import (
 type CreateSecretRequest struct {
 	Key        string `json:"key" validate:"required"`
 	Value      string `json:"value" validate:"required"`
-	ConsumerID string `json:"consumer_id" validate:"required,uuid"`
+	ConsumerID string `json:"consumerId" validate:"required,uuid"`
 }
 
 type UpdateSecretRequest struct {

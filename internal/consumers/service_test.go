@@ -11,6 +11,7 @@ import (
 
 type mockRepository struct {
 	createFunc       func(ctx context.Context, consumer Consumer) error
+	findAllFunc      func(ctx context.Context) ([]Consumer, error)
 	findByIDFunc     func(ctx context.Context, id string) (*Consumer, error)
 	findByApikeyFunc func(ctx context.Context, apikey string) (*Consumer, error)
 	updateFunc       func(ctx context.Context, req UpdateConsumerRequest) error
@@ -19,6 +20,10 @@ type mockRepository struct {
 
 func (m *mockRepository) Create(ctx context.Context, consumer Consumer) error {
 	return m.createFunc(ctx, consumer)
+}
+
+func (m *mockRepository) FindAll(ctx context.Context) ([]Consumer, error) {
+	return m.findAllFunc(ctx)
 }
 
 func (m *mockRepository) FindByID(ctx context.Context, id string) (*Consumer, error) {
@@ -282,7 +287,42 @@ func TestConsumersService_Update_FindByIDError(t *testing.T) {
 	}
 }
 
+func TestConsumersService_FindAll(t *testing.T) {
+	expected := []Consumer{
+		{ID: uuid.New().String(), Name: "bravo", Apikey: "key-b", RoleID: uuid.New().String(), Active: true},
+		{ID: uuid.New().String(), Name: "alpha", Apikey: "key-a", RoleID: uuid.New().String(), Active: true},
+	}
+	service := NewConsumersService(&mockRepository{
+		findAllFunc: func(_ context.Context) ([]Consumer, error) {
+			return expected, nil
+		},
+	})
+
+	got, err := service.FindAll(context.Background())
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got) != len(expected) {
+		t.Fatalf("expected %d consumers, got %d", len(expected), len(got))
+	}
+}
+
+func TestConsumersService_FindAll_Error(t *testing.T) {
+	expectErr := errors.New("db down")
+	service := NewConsumersService(&mockRepository{
+		findAllFunc: func(_ context.Context) ([]Consumer, error) {
+			return nil, expectErr
+		},
+	})
+
+	_, err := service.FindAll(context.Background())
+	if !errors.Is(err, expectErr) {
+		t.Fatalf("expected %v, got %v", expectErr, err)
+	}
+}
+
 func TestConsumersService_NewConsumersService(t *testing.T) {
+
 	repo := &mockRepository{}
 	service := NewConsumersService(repo)
 

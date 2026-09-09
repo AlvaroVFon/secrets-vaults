@@ -2,7 +2,7 @@ MIGRATE        := go run -tags 'postgres' github.com/golang-migrate/migrate/v4/c
 MIGRATIONS_DIR := migrations
 DATABASE_URL   ?= postgres://postgres:postgres@localhost:5432/app?sslmode=disable
 
-.PHONY: help migrate-up migrate-down migrate-down-all migrate-force migrate-version migrate-create migrate-reset test docker-test docker-test-down
+.PHONY: help migrate-up migrate-down migrate-down-all migrate-force migrate-version migrate-create migrate-reset test docker-test docker-test-down web-install web-dev web-build up down
 
 help: ## Muestra los comandos disponibles
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -38,3 +38,18 @@ test: ## Levanta la BD de test y ejecuta todos los tests
 
 docker-test-down: ## Detiene y elimina la infraestructura de test
 	docker compose -f internal/tests/docker-compose.yml --env-file .env.test down
+
+web-install: ## Instala dependencias del front
+	cd web && npm install
+
+web-dev: ## Levanta el front en modo desarrollo (proxy a :8080)
+	cd web && npm run dev
+
+web-build: ## Compila el front para producción
+	cd web && npm run build
+
+up: ## Levanta el stack completo (postgres + migrate + api + web)
+	docker compose up -d --build
+
+down: ## Detiene el stack completo
+	docker compose down

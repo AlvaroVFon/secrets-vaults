@@ -6,15 +6,16 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrorNotFound = errors.New("not found")
 
 type RoleRepository struct {
-	store *pgx.Conn
+	store *pgxpool.Pool
 }
 
-func NewRoleRepository(conn *pgx.Conn) *RoleRepository {
+func NewRoleRepository(conn *pgxpool.Pool) *RoleRepository {
 	return &RoleRepository{
 		store: conn,
 	}

@@ -5,15 +5,15 @@ import (
 
 	"secrets-vault/internal/config"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Connect(cfg *config.DatabaseConfig) (*pgx.Conn, error) {
+func Connect(cfg *config.DatabaseConfig) (*pgxpool.Pool, error) {
 	ctx := context.Background()
-	conn, err := pgx.Connect(ctx, cfg.URL)
+	pool, err := pgxpool.New(ctx, cfg.URL)
 	if err != nil {
 		return nil, err
 	}
 
-	return conn, nil
+	return pool, nil
 }

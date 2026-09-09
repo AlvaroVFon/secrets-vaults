@@ -1,0 +1,6 @@
+INSERT INTO roles (id, name) VALUES ('11111111-1111-1111-1111-111111111111', 'superadmin') ON CONFLICT (name) DO NOTHING;
+INSERT INTO roles (id, name) VALUES ('22222222-2222-2222-2222-222222222222', 'admin') ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO consumers (id, name, apikey, role_id, active)
+VALUES ('33333333-3333-3333-3333-333333333333', 'superadmin', 'superadmin-api-key', '11111111-1111-1111-1111-111111111111', TRUE)
+ON CONFLICT (apikey) DO NOTHING;

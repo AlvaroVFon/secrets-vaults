@@ -20,7 +20,9 @@ const superadminRole = "superadmin"
 var ErrInternalServerError = errors.New("internal server error")
 
 type consumersService interface {
+	FindAll(ctx context.Context) ([]consumers.Consumer, error)
 	FindByApikey(ctx context.Context, apikey string) (*consumers.Consumer, error)
+	FindByID(ctx context.Context, id string) (*consumers.Consumer, error)
 }
 
 type rolesService interface {
@@ -119,11 +121,26 @@ func (h *ManagementHandler) FindAllSecretsGroupedByConsumer(w http.ResponseWrite
 	httpx.WriteResponse(w, http.StatusOK, httpx.Response{Status: http.StatusOK, Message: "Secrets found successfully", Data: grouped})
 }
 
+func (h *ManagementHandler) FindAllConsumers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if h.authorizeSuperadmin(w, r) == nil {
+		return
+	}
+
+	allConsumers, err := h.consumersService.FindAll(ctx)
+	if err != nil {
+		httpx.WriteResponse(w, http.StatusInternalServerError, httpx.Response{Status: http.StatusInternalServerError, Message: ErrInternalServerError.Error()})
+		return
+	}
+
+	httpx.WriteResponse(w, http.StatusOK, httpx.Response{Status: http.StatusOK, Message: "Consumers found successfully", Data: allConsumers})
+}
+
 func (h *ManagementHandler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	consumer := h.authorizeSuperadmin(w, r)
-	if consumer == nil {
+	if h.authorizeSuperadmin(w, r) == nil {
 		return
 	}
 
@@ -133,10 +150,17 @@ func (h *ManagementHandler) CreateSecret(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	createRequest.ConsumerID = consumer.ID
-
 	if err := h.validate.Struct(createRequest); err != nil {
 		httpx.WriteResponse(w, http.StatusBadRequest, httpx.Response{Status: http.StatusBadRequest, Message: err.Error()})
+		return
+	}
+
+	if _, err := h.consumersService.FindByID(ctx, createRequest.ConsumerID); err != nil {
+		if errors.Is(err, consumers.ErrorNotFound) {
+			httpx.WriteResponse(w, http.StatusNotFound, httpx.Response{Status: http.StatusNotFound, Message: "Consumer not found"})
+			return
+		}
+		httpx.WriteResponse(w, http.StatusInternalServerError, httpx.Response{Status: http.StatusInternalServerError, Message: ErrInternalServerError.Error()})
 		return
 	}
 
@@ -184,6 +208,10 @@ func (h *ManagementHandler) UpdateSecret(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		if errors.Is(err, secrets.ErrNotFound) {
 			httpx.WriteResponse(w, http.StatusNotFound, httpx.Response{Status: http.StatusNotFound, Message: "Secret not found"})
+			return
+		}
+		if errors.Is(err, secrets.ErrEmptyArgument) || errors.Is(err, secrets.ErrInvalidUUID) {
+			httpx.WriteResponse(w, http.StatusBadRequest, httpx.Response{Status: http.StatusBadRequest, Message: err.Error()})
 			return
 		}
 		httpx.WriteResponse(w, http.StatusInternalServerError, httpx.Response{Status: http.StatusInternalServerError, Message: ErrInternalServerError.Error()})

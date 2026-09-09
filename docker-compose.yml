@@ -17,6 +17,16 @@ services:
       postgres:
         condition: service_healthy
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "0.0.0.0:8081:80"
+    depends_on:
+      api:
+        condition: service_started
+
   migrate:
     image: migrate/migrate:v4.19.1
     volumes:

@@ -8,15 +8,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrorNotFound = errors.New("not found")
 
 type ConsumersRepository struct {
-	store *pgx.Conn
+	store *pgxpool.Pool
 }
 
-func NewConsumersRepository(store *pgx.Conn) *ConsumersRepository {
+func NewConsumersRepository(store *pgxpool.Pool) *ConsumersRepository {
 	return &ConsumersRepository{
 		store: store,
 	}
@@ -31,7 +32,34 @@ func (r *ConsumersRepository) Create(ctx context.Context, consumer Consumer) err
 	return nil
 }
 
+func (r *ConsumersRepository) FindAll(ctx context.Context) ([]Consumer, error) {
+	query := "SELECT ID, name, apikey, role_id, active FROM consumers ORDER BY name"
+
+	consumers := make([]Consumer, 0)
+
+	rows, err := r.store.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var consumer Consumer
+		if err := rows.Scan(&consumer.ID, &consumer.Name, &consumer.Apikey, &consumer.RoleID, &consumer.Active); err != nil {
+			return nil, err
+		}
+		consumers = append(consumers, consumer)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return consumers, nil
+}
+
 func (r *ConsumersRepository) FindByID(ctx context.Context, id string) (*Consumer, error) {
+
 	if id == "" {
 		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "id")
 	}

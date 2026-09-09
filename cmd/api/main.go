@@ -1,18 +1,18 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
+	"net/http"
 
 	"secrets-vault/internal/config"
+	"secrets-vault/internal/consumers"
 	"secrets-vault/internal/database"
+	"secrets-vault/internal/management"
 	"secrets-vault/internal/roles"
+	"secrets-vault/internal/secrets"
 )
 
 func main() {
-	ctx := context.Background()
-
 	cfg, err := config.LoadConfig(".env")
 	if err != nil {
 		log.Fatal(err)
@@ -22,20 +22,22 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
-	repo := roles.NewRoleRepository(conn)
+	roleRepo := roles.NewRoleRepository(conn)
+	consumersRepo := consumers.NewConsumersRepository(conn)
+	secretsRepo := secrets.NewSecretsRepository(conn)
 
-	role, err := roles.NewRole("Admin")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := repo.Create(ctx, *role); err != nil {
-		log.Fatal(err)
-	}
-	found, err := repo.FindByID(ctx, role.ID)
-	if err != nil {
-		log.Fatal(err)
-	}
+	consumersService := consumers.NewConsumersService(consumersRepo)
+	secretsService := secrets.NewSecretsService(secretsRepo)
 
-	fmt.Println(*found)
+	secretsHandler := secrets.NewSecretsHandler(secretsService, consumersService)
+	managementHandler := management.NewManagementHandler(consumersService, roleRepo, secretsService)
+
+	mux := http.NewServeMux()
+	secrets.RegisterRoutes(mux, secretsHandler)
+	management.RegisterRoutes(mux, managementHandler)
+
+	log.Println("listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

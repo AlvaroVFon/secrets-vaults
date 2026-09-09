@@ -8,15 +8,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrNotFound = errors.New("not found")
 
 type SecretsRepository struct {
-	store *pgx.Conn
+	store *pgxpool.Pool
 }
 
-func NewSecretsRepository(store *pgx.Conn) *SecretsRepository {
+func NewSecretsRepository(store *pgxpool.Pool) *SecretsRepository {
 	return &SecretsRepository{
 		store: store,
 	}

@@ -4,6 +4,7 @@ package management
 import "net/http"
 
 func RegisterRoutes(mux *http.ServeMux, handler *ManagementHandler) {
+	mux.HandleFunc("GET /management/consumers", handler.FindAllConsumers)
 	mux.HandleFunc("GET /management/secrets", handler.FindAllSecretsGroupedByConsumer)
 	mux.HandleFunc("POST /management/secrets", handler.CreateSecret)
 	mux.HandleFunc("PUT /management/secrets/{id}", handler.UpdateSecret)

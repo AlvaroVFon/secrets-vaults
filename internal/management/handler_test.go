@@ -20,11 +20,21 @@ import (
 )
 
 type mockConsumersService struct {
+	findAllFunc      func(ctx context.Context) ([]consumers.Consumer, error)
 	findByApikeyFunc func(ctx context.Context, apikey string) (*consumers.Consumer, error)
+	findByIDFunc     func(ctx context.Context, id string) (*consumers.Consumer, error)
+}
+
+func (m *mockConsumersService) FindAll(ctx context.Context) ([]consumers.Consumer, error) {
+	return m.findAllFunc(ctx)
 }
 
 func (m *mockConsumersService) FindByApikey(ctx context.Context, apikey string) (*consumers.Consumer, error) {
 	return m.findByApikeyFunc(ctx, apikey)
+}
+
+func (m *mockConsumersService) FindByID(ctx context.Context, id string) (*consumers.Consumer, error) {
+	return m.findByIDFunc(ctx, id)
 }
 
 type mockRolesService struct {
@@ -122,6 +132,7 @@ func TestManagement_NoApikey_Unauthorized(t *testing.T) {
 		path   string
 		body   string
 	}{
+		{http.MethodGet, "/management/consumers", ""},
 		{http.MethodGet, "/management/secrets", ""},
 		{http.MethodPost, "/management/secrets", `{"key":"k","value":"v"}`},
 		{http.MethodPut, "/management/secrets/" + uuid.New().String(), `{"key":"k"}`},
@@ -187,6 +198,7 @@ func TestManagement_NonSuperadmin_Forbidden(t *testing.T) {
 		method string
 		path   string
 	}{
+		{http.MethodGet, "/management/consumers"},
 		{http.MethodGet, "/management/secrets"},
 		{http.MethodPost, "/management/secrets"},
 		{http.MethodPut, "/management/secrets/" + uuid.New().String()},
@@ -330,10 +342,12 @@ func TestManagement_CreateSecret_ValidationError(t *testing.T) {
 		name string
 		body string
 	}{
-		{name: "missing key", body: `{"value":"v"}`},
-		{name: "missing value", body: `{"key":"k"}`},
-		{name: "empty key", body: `{"key":"","value":"v"}`},
-		{name: "empty value", body: `{"key":"k","value":""}`},
+		{name: "missing key", body: `{"value":"v","consumerId":"` + uuid.New().String() + `"}`},
+		{name: "missing value", body: `{"key":"k","consumerId":"` + uuid.New().String() + `"}`},
+		{name: "empty key", body: `{"key":"","value":"v","consumerId":"` + uuid.New().String() + `"}`},
+		{name: "empty value", body: `{"key":"k","value":"","consumerId":"` + uuid.New().String() + `"}`},
+		{name: "missing consumerId", body: `{"key":"k","value":"v"}`},
+		{name: "invalid consumerId", body: `{"key":"k","value":"v","consumerId":"not-a-uuid"}`},
 	}
 
 	for _, tt := range tests {
@@ -354,12 +368,19 @@ func TestManagement_CreateSecret_ValidationError(t *testing.T) {
 
 func TestManagement_CreateSecret_Success(t *testing.T) {
 	consumer := testSuperadminConsumer()
+	target := &consumers.Consumer{
+		ID:     uuid.New().String(),
+		Name:   "app-1",
+		Apikey: "app-1-key",
+		RoleID: uuid.New().String(),
+		Active: true,
+	}
 
 	expected := &secrets.Secret{
 		ID:         uuid.New().String(),
 		Key:        "db.password",
 		Value:      "s3cret",
-		ConsumerID: consumer.ID,
+		ConsumerID: target.ID,
 	}
 
 	var received secrets.CreateSecretRequest
@@ -367,6 +388,12 @@ func TestManagement_CreateSecret_Success(t *testing.T) {
 		&mockConsumersService{
 			findByApikeyFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
 				return consumer, nil
+			},
+			findByIDFunc: func(_ context.Context, id string) (*consumers.Consumer, error) {
+				if id != target.ID {
+					t.Errorf("expected FindByID %q, got %q", target.ID, id)
+				}
+				return target, nil
 			},
 		},
 		&mockRolesService{
@@ -382,19 +409,106 @@ func TestManagement_CreateSecret_Success(t *testing.T) {
 		},
 	)
 
-	rec := doRequest(t, router.ServeHTTP, http.MethodPost, "/management/secrets", `{"key":"db.password","value":"s3cret"}`, consumer.Apikey)
+	body := `{"key":"db.password","value":"s3cret","consumerId":"` + target.ID + `"}`
+	rec := doRequest(t, router.ServeHTTP, http.MethodPost, "/management/secrets", body, consumer.Apikey)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, rec.Code)
 	}
 
-	if received.ConsumerID != consumer.ID {
-		t.Errorf("expected ConsumerID %q, got %q", consumer.ID, received.ConsumerID)
+	if received.ConsumerID != target.ID {
+		t.Errorf("expected ConsumerID %q, got %q", target.ID, received.ConsumerID)
 	}
 
 	res := decodeResponse(t, rec)
 	if res.Message != "Secret created successfully" {
 		t.Errorf("expected message %q, got %q", "Secret created successfully", res.Message)
+	}
+}
+
+func TestManagement_CreateSecret_ConsumerNotFound(t *testing.T) {
+	consumer := testSuperadminConsumer()
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByApikeyFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return consumer, nil
+			},
+			findByIDFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return nil, consumers.ErrorNotFound
+			},
+		},
+		&mockRolesService{
+			findByIDFunc: func(_ context.Context, _ string) (*roles.Role, error) {
+				return testSuperadminRole(), nil
+			},
+		},
+		&mockSecretsService{},
+	)
+
+	body := `{"key":"k","value":"v","consumerId":"` + uuid.New().String() + `"}`
+	rec := doRequest(t, router.ServeHTTP, http.MethodPost, "/management/secrets", body, consumer.Apikey)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, rec.Code)
+	}
+
+	res := decodeResponse(t, rec)
+	if res.Message != "Consumer not found" {
+		t.Errorf("expected message %q, got %q", "Consumer not found", res.Message)
+	}
+}
+
+func TestManagement_FindAllConsumers_Success(t *testing.T) {
+	consumer := testSuperadminConsumer()
+
+	expected := []consumers.Consumer{
+		{ID: uuid.New().String(), Name: "alpha", Apikey: "alpha-key", RoleID: uuid.New().String(), Active: true},
+		{ID: uuid.New().String(), Name: "beta", Apikey: "beta-key", RoleID: uuid.New().String(), Active: false},
+	}
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByApikeyFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return consumer, nil
+			},
+			findAllFunc: func(_ context.Context) ([]consumers.Consumer, error) {
+				return expected, nil
+			},
+		},
+		&mockRolesService{
+			findByIDFunc: func(_ context.Context, _ string) (*roles.Role, error) {
+				return testSuperadminRole(), nil
+			},
+		},
+		&mockSecretsService{},
+	)
+
+	rec := doRequest(t, router.ServeHTTP, http.MethodGet, "/management/consumers", "", consumer.Apikey)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	res := decodeResponse(t, rec)
+	if res.Message != "Consumers found successfully" {
+		t.Errorf("expected message %q, got %q", "Consumers found successfully", res.Message)
+	}
+
+	var got []consumers.Consumer
+	raw, err := json.Marshal(res.Data)
+	if err != nil {
+		t.Fatalf("marshal data: %v", err)
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("unmarshal consumers: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 consumers, got %d", len(got))
+	}
+	if got[0].Name != "alpha" || got[1].Name != "beta" {
+		t.Errorf("expected consumers alpha and beta, got %+v", got)
 	}
 }
 
@@ -569,6 +683,34 @@ func TestManagement_UpdateSecret_NotFound(t *testing.T) {
 	res := decodeResponse(t, rec)
 	if res.Message != "Secret not found" {
 		t.Errorf("expected message %q, got %q", "Secret not found", res.Message)
+	}
+}
+
+func TestManagement_UpdateSecret_EmptyField_BadRequest(t *testing.T) {
+	consumer := testSuperadminConsumer()
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByApikeyFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return consumer, nil
+			},
+		},
+		&mockRolesService{
+			findByIDFunc: func(_ context.Context, _ string) (*roles.Role, error) {
+				return testSuperadminRole(), nil
+			},
+		},
+		&mockSecretsService{
+			updateFunc: func(_ context.Context, _ secrets.UpdateSecretRequest) (*secrets.Secret, error) {
+				return nil, secrets.ErrEmptyArgument
+			},
+		},
+	)
+
+	rec := doRequest(t, router.ServeHTTP, http.MethodPut, "/management/secrets/"+uuid.New().String(), `{"value":"v"}`, consumer.Apikey)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
 	}
 }
 

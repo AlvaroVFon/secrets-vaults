@@ -24,6 +24,7 @@ type UpdateConsumerRequest struct {
 
 type repository interface {
 	Create(ctx context.Context, consumer Consumer) error
+	FindAll(ctx context.Context) ([]Consumer, error)
 	FindByID(ctx context.Context, id string) (*Consumer, error)
 	FindByApikey(ctx context.Context, apikey string) (*Consumer, error)
 	Update(ctx context.Context, req UpdateConsumerRequest) error
@@ -82,4 +83,12 @@ func (s *ConsumersService) Update(ctx context.Context, req UpdateConsumerRequest
 
 func (s *ConsumersService) FindByApikey(ctx context.Context, apikey string) (*Consumer, error) {
 	return s.repository.FindByApikey(ctx, apikey)
+}
+
+func (s *ConsumersService) FindAll(ctx context.Context) ([]Consumer, error) {
+	return s.repository.FindAll(ctx)
+}
+
+func (s *ConsumersService) FindByID(ctx context.Context, id string) (*Consumer, error) {
+	return s.repository.FindByID(ctx, id)
 }
