@@ -8,11 +8,18 @@ import (
 
 type AppConfig struct {
 	Environment string `json:"env"`
+	AuthSecret  string `json:"authSecret"`
+	AuthTTL     int    `json:"authTTL"`
 }
 
 var (
 	ErrEnvironmentNotProvided = errors.New("environment must not be empty")
 	ErrInvalidEnvironment     = errors.New("invalid environment provided")
+)
+
+const (
+	DefaultAuthSecret = "change-me-in-production"
+	DefaultAuthTTL    = 24
 )
 
 func NewAppConfig(env string) (*AppConfig, error) {

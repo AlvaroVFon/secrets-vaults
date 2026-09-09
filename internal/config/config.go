@@ -33,6 +33,18 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	authSecret, err := getStringEnvVar("AUTH_SECRET", DefaultAuthSecret)
+	if err != nil {
+		return nil, err
+	}
+	authTTL, err := getIntEnvVar("AUTH_TTL")
+	if err != nil {
+		authTTL = DefaultAuthTTL
+	}
+
+	appConfig.AuthSecret = authSecret
+	appConfig.AuthTTL = authTTL
+
 	// DB CONFIG
 	dbURL, err := getStringEnvVar("POSTGRES_URL", "http://localhost:5432")
 	if err != nil {

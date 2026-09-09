@@ -1,78 +1,93 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ApiError, deleteSecret, fetchConsumers, fetchGroupedSecrets } from '../api/client'
-import { logout, storedApikey } from '../stores/auth'
-import type { Consumer, ConsumerSecrets, Secret } from '../types'
+import {
+  ApiError,
+  deleteConsumer,
+  deleteSecret,
+  fetchConsumers,
+  fetchRoles,
+  fetchSecrets,
+  updateConsumer,
+} from '../api/client'
+import { currentUsername, logout, storedToken } from '../stores/auth'
+import type { Consumer, Role, Secret } from '../types'
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
+import CreateConsumerModal from '../components/CreateConsumerModal.vue'
 import CreateSecretModal from '../components/CreateSecretModal.vue'
+import EditConsumerModal from '../components/EditConsumerModal.vue'
 import EditSecretModal from '../components/EditSecretModal.vue'
 
-const groups = ref<ConsumerSecrets[]>([])
 const consumers = ref<Consumer[]>([])
+const roles = ref<Role[]>([])
+const selected = ref<Consumer | null>(null)
+const secrets = ref<Secret[]>([])
 const loading = ref(false)
+const loadingSecrets = ref(false)
 const error = ref('')
 const visible = ref<Set<string>>(new Set())
-const showCreate = ref(false)
-const preselect = ref('')
-const editing = ref<Secret | null>(null)
-const deleting = ref<Secret | null>(null)
 
-interface ConsumerSection {
-  consumer: Consumer
-  secrets: Secret[]
-}
+const showCreateConsumer = ref(false)
+const editingConsumer = ref<Consumer | null>(null)
+const deletingConsumer = ref<Consumer | null>(null)
 
-const sections = computed<ConsumerSection[]>(() => {
-  const byId = new Map<string, Secret[]>()
-  for (const g of groups.value) {
-    byId.set(g.consumerId, g.secrets)
-  }
-  const known = new Set(consumers.value.map((c) => c.id))
-  const list: ConsumerSection[] = consumers.value.map((c) => ({
-    consumer: c,
-    secrets: byId.get(c.id) ?? [],
-  }))
-  for (const g of groups.value) {
-    if (!known.has(g.consumerId)) {
-      list.push({
-        consumer: { id: g.consumerId, name: g.consumerId },
-        secrets: g.secrets,
-      })
-    }
-  }
-  return list
+const showCreateSecret = ref(false)
+const editingSecret = ref<Secret | null>(null)
+const deletingSecret = ref<Secret | null>(null)
+
+const roleName = computed(() => {
+  const map = new Map(roles.value.map((r) => [r.id, r.name]))
+  return (id: string): string => map.get(id) ?? id
 })
 
-async function load(): Promise<void> {
+function handleError(err: unknown): void {
+  if (err instanceof ApiError) {
+    if (err.status === 401) {
+      onLogout()
+      return
+    }
+    error.value = err.message
+  } else {
+    error.value = 'No se pudo conectar con la API'
+  }
+}
+
+async function loadConsumers(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    const [allConsumers, grouped] = await Promise.all([
-      fetchConsumers(storedApikey.value),
-      fetchGroupedSecrets(storedApikey.value),
+    const [allConsumers, allRoles] = await Promise.all([
+      fetchConsumers(storedToken.value),
+      fetchRoles(storedToken.value),
     ])
     consumers.value = allConsumers
-    groups.value = grouped
-  } catch (err) {
-    if (err instanceof ApiError) {
-      if (err.status === 401) {
-        logout()
-        return
-      }
-      error.value = err.message
-    } else {
-      error.value = 'No se pudo conectar con la API'
+    roles.value = allRoles
+    if (selected.value) {
+      const still = allConsumers.find((c) => c.id === selected.value?.id)
+      selected.value = still ?? null
     }
+  } catch (err) {
+    handleError(err)
   } finally {
     loading.value = false
   }
 }
 
-function toggle(id: string): void {
-  if (visible.value.has(id)) {
-    visible.value.delete(id)
-  } else {
-    visible.value.add(id)
+async function select(consumer: Consumer): Promise<void> {
+  selected.value = consumer
+  secrets.value = []
+  error.value = ''
+  visible.value = new Set()
+  await loadSecrets(consumer.id)
+}
+
+async function loadSecrets(consumerId: string): Promise<void> {
+  loadingSecrets.value = true
+  try {
+    secrets.value = await fetchSecrets(storedToken.value, consumerId)
+  } catch (err) {
+    handleError(err)
+  } finally {
+    loadingSecrets.value = false
   }
 }
 
@@ -80,14 +95,14 @@ function shortId(id: string): string {
   return id.length > 13 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id
 }
 
-function openCreate(consumerId = ''): void {
-  preselect.value = consumerId
-  showCreate.value = true
-}
-
-function closeCreate(): void {
-  showCreate.value = false
-  preselect.value = ''
+function toggleVisible(id: string): void {
+  const next = new Set(visible.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  visible.value = next
 }
 
 async function copy(value: string): Promise<void> {
@@ -98,96 +113,212 @@ async function copy(value: string): Promise<void> {
   }
 }
 
-async function onDelete(): Promise<void> {
-  if (!deleting.value) return
+async function onToggleActive(): Promise<void> {
+  if (!selected.value) return
   try {
-    await deleteSecret(storedApikey.value, deleting.value.id)
-    deleting.value = null
-    await load()
+    await updateConsumer(storedToken.value, selected.value.id, { active: !selected.value.active })
+    await loadConsumers()
   } catch (err) {
-    deleting.value = null
-    if (err instanceof ApiError) {
-      if (err.status === 401) {
-        logout()
-        return
-      }
-      error.value = err.message
-    } else {
-      error.value = 'No se pudo conectar con la API'
+    handleError(err)
+  }
+}
+
+async function onDeleteConsumer(): Promise<void> {
+  if (!deletingConsumer.value) return
+  const id = deletingConsumer.value.id
+  try {
+    await deleteConsumer(storedToken.value, id)
+    deletingConsumer.value = null
+    if (selected.value?.id === id) {
+      selected.value = null
+      secrets.value = []
     }
+    await loadConsumers()
+  } catch (err) {
+    deletingConsumer.value = null
+    handleError(err)
+  }
+}
+
+async function onDeleteSecret(): Promise<void> {
+  if (!deletingSecret.value) return
+  try {
+    await deleteSecret(storedToken.value, deletingSecret.value.id)
+    deletingSecret.value = null
+    await loadSecrets(selected.value?.id ?? '')
+  } catch (err) {
+    deletingSecret.value = null
+    handleError(err)
   }
 }
 
 function onLogout(): void {
   logout()
-  groups.value = []
   consumers.value = []
+  roles.value = []
+  selected.value = null
+  secrets.value = []
 }
 
-onMounted(load)
+onMounted(loadConsumers)
 </script>
 
 <template>
-  <main class="page wide">
-    <header class="topbar">
-      <h1>Secrets Vault</h1>
-      <div class="row">
-        <button class="btn primary" @click="openCreate()">＋ Nuevo secret</button>
-        <button class="btn" @click="onLogout">Salir</button>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-logo">🔐</span>
+        <span>Secrets Vault</span>
       </div>
-    </header>
 
-    <p v-if="loading" class="muted">Cargando…</p>
-    <p v-if="error" class="error">{{ error }}</p>
-
-    <section v-for="section in sections" :key="section.consumer.id" class="card">
-      <div class="section-head">
-        <h2 class="consumer" :title="section.consumer.id">
-          {{ section.consumer.name }}
-          <code>{{ shortId(section.consumer.id) }}</code>
-          <span class="count">{{ section.secrets.length }}</span>
-        </h2>
-        <button class="btn ghost" @click="openCreate(section.consumer.id)" title="Nuevo secret en este consumer">＋</button>
+      <div class="sidebar-scroll">
+        <p class="nav-label">Consumers</p>
+        <ul class="nav-list">
+          <li v-for="c in consumers" :key="c.id">
+            <button
+              class="nav-item"
+              :class="{ active: selected?.id === c.id }"
+              @click="select(c)"
+              :title="c.id"
+            >
+              <span class="dot" :class="c.active ? 'on' : 'off'"></span>
+              <span class="nav-name">{{ c.name }}</span>
+              <span class="nav-role">{{ roleName(c.roleId) }}</span>
+            </button>
+          </li>
+        </ul>
+        <p v-if="!loading && consumers.length === 0" class="muted empty-sidebar">
+          Sin consumers todavía.
+        </p>
       </div>
-      <ul v-if="section.secrets.length > 0" class="secrets">
-        <li v-for="secret in section.secrets" :key="secret.id" class="secret-row">
-          <div class="secret-main">
+
+      <button class="btn primary sidebar-add" @click="showCreateConsumer = true">
+        ＋ Nuevo consumer
+      </button>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div v-if="selected" class="topbar-info">
+          <h1>{{ selected.name }}</h1>
+          <code class="muted" :title="selected.id">{{ shortId(selected.id) }}</code>
+          <span class="badge" :class="selected.active ? 'on' : 'off'">
+            {{ selected.active ? 'Activo' : 'Inactivo' }}
+          </span>
+          <span class="badge">{{ roleName(selected.roleId) }}</span>
+        </div>
+        <h1 v-else>Panel de gestión</h1>
+
+        <div class="topbar-actions">
+          <span class="muted user-label">{{ currentUsername }}</span>
+          <button class="btn ghost" @click="onLogout">Salir</button>
+        </div>
+      </header>
+
+      <p v-if="error" class="error">{{ error }}</p>
+
+      <template v-if="selected">
+        <div class="panel-head">
+          <p class="muted">
+            {{ secrets.length }} secret{{ secrets.length === 1 ? '' : 's' }}
+          </p>
+          <div class="row">
+            <button class="btn" @click="onToggleActive">
+              {{ selected.active ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button class="btn" @click="editingConsumer = selected">Editar consumer</button>
+            <button class="btn danger" @click="deletingConsumer = selected">Eliminar</button>
+            <button class="btn primary" @click="showCreateSecret = true">＋ Nuevo secret</button>
+          </div>
+        </div>
+
+        <p v-if="loadingSecrets" class="muted">Cargando secrets…</p>
+
+        <div v-else-if="secrets.length === 0" class="empty-state">
+          <p class="muted">Este consumer no tiene secrets todavía.</p>
+        </div>
+
+        <div v-else class="secrets-table">
+          <div class="table-row table-head">
+            <span>Key</span>
+            <span>Value</span>
+            <span class="table-actions">Acciones</span>
+          </div>
+          <div v-for="secret in secrets" :key="secret.id" class="table-row">
             <code class="key">{{ secret.key }}</code>
             <code class="value">{{ visible.has(secret.id) ? secret.value : '••••••••' }}</code>
+            <div class="table-actions row">
+              <button
+                class="btn ghost icon"
+                @click="toggleVisible(secret.id)"
+                :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+                :title="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+              >
+                {{ visible.has(secret.id) ? '🙈' : '👁️' }}
+              </button>
+              <button
+                class="btn ghost icon"
+                @click="copy(secret.value)"
+                aria-label="Copiar"
+                title="Copiar"
+              >
+                📋
+              </button>
+              <button class="btn ghost" @click="editingSecret = secret">Editar</button>
+              <button class="btn ghost danger-text" @click="deletingSecret = secret">Eliminar</button>
+            </div>
           </div>
-          <div class="row">
-            <button class="btn ghost" @click="toggle(secret.id)">
-              {{ visible.has(secret.id) ? '🙈' : '👁️' }}
-            </button>
-            <button class="btn ghost" @click="copy(secret.value)">📋</button>
-            <button class="btn" @click="editing = secret">Editar</button>
-            <button class="btn danger" @click="deleting = secret">Eliminar</button>
-          </div>
-        </li>
-      </ul>
-      <p v-else class="muted">Sin secrets.</p>
-    </section>
+        </div>
+      </template>
 
-    <p v-if="!loading && sections.length === 0 && !error" class="muted">Sin consumers todavía.</p>
+      <div v-else class="empty-state welcome">
+        <div class="welcome-icon">🔐</div>
+        <h2>Selecciona un consumer</h2>
+        <p class="muted">
+          Elige un consumer de la barra lateral para ver y gestionar sus secretos.
+        </p>
+      </div>
+    </main>
+  </div>
 
-    <CreateSecretModal
-      v-if="showCreate"
-      :consumers="consumers"
-      :preselect="preselect"
-      @close="closeCreate"
-      @created="closeCreate(); load()"
-    />
-    <EditSecretModal
-      v-if="editing"
-      :secret="editing"
-      @close="editing = null"
-      @updated="editing = null; load()"
-    />
-    <ConfirmDeleteModal
-      v-if="deleting"
-      :secret-key="deleting.key"
-      @close="deleting = null"
-      @confirm="onDelete"
-    />
-  </main>
+  <CreateConsumerModal
+    v-if="showCreateConsumer"
+    :roles="roles"
+    @close="showCreateConsumer = false"
+    @created="showCreateConsumer = false; loadConsumers()"
+  />
+  <EditConsumerModal
+    v-if="editingConsumer"
+    :consumer="editingConsumer!"
+    :roles="roles"
+    @close="editingConsumer = null"
+    @updated="editingConsumer = null; loadConsumers()"
+  />
+  <ConfirmDeleteModal
+    v-if="deletingConsumer"
+    title="Eliminar consumer"
+    :message="`¿Eliminar el consumer «${deletingConsumer.name}»? Esta acción no se puede deshacer.`"
+    @close="deletingConsumer = null"
+    @confirm="onDeleteConsumer"
+  />
+
+  <CreateSecretModal
+    v-if="showCreateSecret && selected"
+    :consumer="selected"
+    @close="showCreateSecret = false"
+    @created="showCreateSecret = false; loadSecrets(selected.id)"
+  />
+  <EditSecretModal
+    v-if="editingSecret"
+    :secret="editingSecret"
+    @close="editingSecret = null"
+    @updated="editingSecret = null; loadSecrets(selected!.id)"
+  />
+  <ConfirmDeleteModal
+    v-if="deletingSecret"
+    title="Eliminar secret"
+    :message="`¿Eliminar el secret «${deletingSecret.key}»?`"
+    @close="deletingSecret = null"
+    @confirm="onDeleteSecret"
+  />
 </template>

@@ -18,6 +18,8 @@ type mockRepository struct {
 	findByIDFunc            func(ctx context.Context, id string) (*Secret, error)
 	findAllFunc             func(ctx context.Context) ([]Secret, error)
 	findAllByConsumerIDFunc func(ctx context.Context, consumerID string) ([]Secret, error)
+	findAllFullByConsumer   func(ctx context.Context, consumerID string) ([]Secret, error)
+	countByConsumerIDFunc   func(ctx context.Context, consumerID string) (int, error)
 }
 
 func (m *mockRepository) Create(ctx context.Context, secret Secret) error {
@@ -42,6 +44,14 @@ func (m *mockRepository) FindAll(ctx context.Context) ([]Secret, error) {
 
 func (m *mockRepository) FindAllByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
 	return m.findAllByConsumerIDFunc(ctx, consumerID)
+}
+
+func (m *mockRepository) FindAllFullByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
+	return m.findAllFullByConsumer(ctx, consumerID)
+}
+
+func (m *mockRepository) CountByConsumerID(ctx context.Context, consumerID string) (int, error) {
+	return m.countByConsumerIDFunc(ctx, consumerID)
 }
 
 func TestSecretsService_Create(t *testing.T) {
@@ -150,6 +160,51 @@ func TestSecretsService_FindAllByConsumerID_Error(t *testing.T) {
 	_, err := service.FindAllByConsumerID(context.Background(), uuid.New().String())
 	if !errors.Is(err, expectErr) {
 		t.Fatalf("expected %v, got %v", expectErr, err)
+	}
+}
+
+func TestSecretsService_FindAllFullByConsumerID(t *testing.T) {
+	consumerID := uuid.New().String()
+	expected := []Secret{
+		{ID: uuid.New().String(), Key: "db.password", Value: "s3cret", ConsumerID: consumerID},
+	}
+
+	service := NewSecretsService(&mockRepository{
+		findAllFullByConsumer: func(_ context.Context, gotConsumerID string) ([]Secret, error) {
+			if gotConsumerID != consumerID {
+				t.Errorf("expected consumerID %q, got %q", consumerID, gotConsumerID)
+			}
+			return expected, nil
+		},
+	})
+
+	got, err := service.FindAllFullByConsumerID(context.Background(), consumerID)
+	if err != nil {
+		t.Fatalf("find all full: %v", err)
+	}
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("expected %+v, got %+v", expected, got)
+	}
+}
+
+func TestSecretsService_CountByConsumerID(t *testing.T) {
+	consumerID := uuid.New().String()
+
+	service := NewSecretsService(&mockRepository{
+		countByConsumerIDFunc: func(_ context.Context, gotConsumerID string) (int, error) {
+			if gotConsumerID != consumerID {
+				t.Errorf("expected consumerID %q, got %q", consumerID, gotConsumerID)
+			}
+			return 3, nil
+		},
+	})
+
+	count, err := service.CountByConsumerID(context.Background(), consumerID)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 3 {
+		t.Errorf("expected 3, got %d", count)
 	}
 }
 

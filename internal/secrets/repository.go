@@ -112,6 +112,57 @@ func (r *SecretsRepository) FindAllByConsumerID(ctx context.Context, consumerID 
 	return secrets, nil
 }
 
+func (r *SecretsRepository) FindAllFullByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
+	if consumerID == "" {
+		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "consumerID")
+	}
+	if _, err := uuid.Parse(consumerID); err != nil {
+		return nil, fmt.Errorf("%w: %q", ErrInvalidUUID, consumerID)
+	}
+
+	query := "SELECT id, key, value, consumer_id FROM secrets WHERE consumer_id=$1"
+	secrets := make([]Secret, 0)
+
+	rows, err := r.store.Query(ctx, query, consumerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var secret Secret
+		if err := rows.Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID); err != nil {
+			return nil, err
+		}
+		secrets = append(secrets, secret)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return secrets, nil
+}
+
+func (r *SecretsRepository) CountByConsumerID(ctx context.Context, consumerID string) (int, error) {
+	if consumerID == "" {
+		return 0, fmt.Errorf("%w: %q", ErrEmptyArgument, "consumerID")
+	}
+	if _, err := uuid.Parse(consumerID); err != nil {
+		return 0, fmt.Errorf("%w: %q", ErrInvalidUUID, consumerID)
+	}
+
+	query := "SELECT COUNT(*) FROM secrets WHERE consumer_id=$1"
+
+	var count int
+	err := r.store.QueryRow(ctx, query, consumerID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (r *SecretsRepository) Update(ctx context.Context, req UpdateSecretRequest) error {
 	if req.ID == "" {
 		return fmt.Errorf("%w: %q", ErrEmptyArgument, "id")

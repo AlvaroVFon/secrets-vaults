@@ -22,6 +22,8 @@ type repository interface {
 	FindAll(ctx context.Context) ([]Secret, error)
 	FindByID(ctx context.Context, id string) (*Secret, error)
 	FindAllByConsumerID(ctx context.Context, consumerID string) ([]Secret, error)
+	FindAllFullByConsumerID(ctx context.Context, consumerID string) ([]Secret, error)
+	CountByConsumerID(ctx context.Context, consumerID string) (int, error)
 	Update(ctx context.Context, req UpdateSecretRequest) error
 	DeleteByID(ctx context.Context, id string) error
 }
@@ -59,6 +61,14 @@ func (s *SecretsService) FindByID(ctx context.Context, id string) (*Secret, erro
 
 func (s *SecretsService) FindAllByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
 	return s.repository.FindAllByConsumerID(ctx, consumerID)
+}
+
+func (s *SecretsService) FindAllFullByConsumerID(ctx context.Context, consumerID string) ([]Secret, error) {
+	return s.repository.FindAllFullByConsumerID(ctx, consumerID)
+}
+
+func (s *SecretsService) CountByConsumerID(ctx context.Context, consumerID string) (int, error) {
+	return s.repository.CountByConsumerID(ctx, consumerID)
 }
 
 func (s *SecretsService) Update(ctx context.Context, req UpdateSecretRequest) (*Secret, error) {

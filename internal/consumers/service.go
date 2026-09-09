@@ -9,9 +9,9 @@ import (
 )
 
 type CreateConsumerRequest struct {
-	Name   string `json:"name"`
-	Apikey string `json:"apikey"`
-	RoleID string `json:"roleId"`
+	Name   string `json:"name" validate:"required"`
+	Apikey string `json:"apikey" validate:"required"`
+	RoleID string `json:"roleId" validate:"required,uuid"`
 }
 
 type UpdateConsumerRequest struct {

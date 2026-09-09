@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ secretKey: string }>()
+defineProps<{ title: string; message: string }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'confirm'): void }>()
 </script>
 
@@ -7,11 +7,11 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'confirm'): void }>()
   <div class="backdrop" @click.self="emit('close')">
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-head">
-        <h2>Eliminar secret</h2>
+        <h2>{{ title }}</h2>
         <button class="btn ghost" @click="emit('close')" aria-label="Cerrar">✕</button>
       </div>
       <div class="modal-body">
-        <p>¿Eliminar <code>{{ secretKey }}</code>?</p>
+        <p>{{ message }}</p>
         <div class="row end">
           <button class="btn" @click="emit('close')">Cancelar</button>
           <button class="btn danger" @click="emit('confirm')">Eliminar</button>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ApiError, updateSecret } from '../api/client'
-import { logout, storedApikey } from '../stores/auth'
+import { logout, storedToken } from '../stores/auth'
 import type { Secret } from '../types'
 import ModalBase from './ModalBase.vue'
 
@@ -22,7 +22,7 @@ async function onSave(): Promise<void> {
   }
   loading.value = true
   try {
-    await updateSecret(storedApikey.value, props.secret.id, {
+    await updateSecret(storedToken.value, props.secret.id, {
       key: key.value.trim(),
       value: value.value,
     })

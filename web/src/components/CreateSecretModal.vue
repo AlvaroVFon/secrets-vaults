@@ -1,36 +1,27 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ApiError, createSecret } from '../api/client'
-import { logout, storedApikey } from '../stores/auth'
+import { logout, storedToken } from '../stores/auth'
 import type { Consumer } from '../types'
 import ModalBase from './ModalBase.vue'
 
-const props = defineProps<{ consumers: Consumer[]; preselect?: string }>()
+const props = defineProps<{ consumer: Consumer }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
 
-const consumerId = ref(props.preselect ?? '')
 const key = ref('')
 const value = ref('')
 const error = ref('')
 const loading = ref(false)
 
-function consumerName(id: string): string {
-  return props.consumers.find((c) => c.id === id)?.name ?? id
-}
-
 async function onSave(): Promise<void> {
   error.value = ''
-  if (consumerId.value === '') {
-    error.value = 'Selecciona un consumer'
-    return
-  }
   if (key.value.trim() === '' || value.value.trim() === '') {
     error.value = 'Key y value no pueden estar vacíos'
     return
   }
   loading.value = true
   try {
-    await createSecret(storedApikey.value, consumerId.value, key.value.trim(), value.value)
+    await createSecret(storedToken.value, props.consumer.id, key.value.trim(), value.value)
     emit('created')
   } catch (err) {
     if (err instanceof ApiError) {
@@ -51,15 +42,9 @@ async function onSave(): Promise<void> {
 <template>
   <ModalBase title="Nuevo secret" @close="emit('close')">
     <form @submit.prevent="onSave">
-      <label class="field">
-        <span>Consumer</span>
-        <select v-model="consumerId">
-          <option value="" disabled>— Seleccionar consumer —</option>
-          <option v-for="c in consumers" :key="c.id" :value="c.id">
-            {{ c.name }}
-          </option>
-        </select>
-      </label>
+      <p class="muted field-hint">
+        Consumer: <strong>{{ consumer.name }}</strong>
+      </p>
       <label class="field">
         <span>Key</span>
         <input v-model="key" placeholder="db.password" autocomplete="off" />
@@ -72,7 +57,7 @@ async function onSave(): Promise<void> {
       <div class="row end">
         <button type="button" class="btn" @click="emit('close')">Cancelar</button>
         <button type="submit" class="btn primary" :disabled="loading">
-          {{ loading ? 'Guardando…' : `Crear en ${consumerName(consumerId) || '…'}` }}
+          {{ loading ? 'Guardando…' : `Crear en ${consumer.name}` }}
         </button>
       </div>
     </form>

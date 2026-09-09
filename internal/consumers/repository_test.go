@@ -21,6 +21,10 @@ func setupConsumersRepo(t *testing.T) *ConsumersRepository {
 		t.Fatalf("connect: %v", err)
 	}
 
+	if err := tests.CleanDB(t, conn); err != nil {
+		t.Fatalf("cleanup DB: %v", err)
+	}
+
 	t.Cleanup(func() {
 		if err := tests.CleanDB(t, conn); err != nil {
 			t.Logf("cleanup DB: %v", err)

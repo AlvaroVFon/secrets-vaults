@@ -1,18 +1,25 @@
 import { computed, ref } from 'vue';
 
-const STORAGE_KEY = 'secrets-vault-apikey';
+const TOKEN_KEY = 'secrets-vault-token';
+const USERNAME_KEY = 'secrets-vault-username';
 
-const apikey = ref<string>(localStorage.getItem(STORAGE_KEY) ?? '');
+const token = ref<string>(localStorage.getItem(TOKEN_KEY) ?? '');
+const username = ref<string>(localStorage.getItem(USERNAME_KEY) ?? '');
 
-export const isLoggedIn = computed(() => apikey.value !== '');
-export const storedApikey = computed(() => apikey.value);
+export const isLoggedIn = computed(() => token.value !== '');
+export const storedToken = computed(() => token.value);
+export const currentUsername = computed(() => username.value);
 
-export function login(key: string): void {
-  apikey.value = key.trim();
-  localStorage.setItem(STORAGE_KEY, apikey.value);
+export function login(newToken: string, user: string): void {
+  token.value = newToken;
+  username.value = user;
+  localStorage.setItem(TOKEN_KEY, newToken);
+  localStorage.setItem(USERNAME_KEY, user);
 }
 
 export function logout(): void {
-  apikey.value = '';
-  localStorage.removeItem(STORAGE_KEY);
+  token.value = '';
+  username.value = '';
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USERNAME_KEY);
 }

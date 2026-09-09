@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/secrets': 'http://localhost:8080',
       '/management': 'http://localhost:8080',
+      '/auth': 'http://localhost:8080',
     },
   },
 })

@@ -17,6 +17,10 @@ func setupRoleRepo(t *testing.T) *RoleRepository {
 		t.Fatalf("connect: %v", err)
 	}
 
+	if err := tests.CleanDB(t, conn); err != nil {
+		t.Fatalf("cleanup DB: %v", err)
+	}
+
 	t.Cleanup(func() {
 		if err := tests.CleanDB(t, conn); err != nil {
 			t.Logf("cleanup DB: %v", err)
@@ -111,5 +115,33 @@ func TestRoleRepository_FindByID_EmptyID(t *testing.T) {
 	_, err := repo.FindByID(ctx, "")
 	if !errors.Is(err, ErrEmptyArgument) {
 		t.Fatalf("expected ErrEmptyArgument, got %v", err)
+	}
+}
+
+func TestRoleRepository_FindAll(t *testing.T) {
+	repo := setupRoleRepo(t)
+	ctx := context.Background()
+
+	admin, err := NewRole("admin")
+	if err != nil {
+		t.Fatalf("new role: %v", err)
+	}
+	superadmin, err := NewRole("superadmin")
+	if err != nil {
+		t.Fatalf("new role: %v", err)
+	}
+	if err := repo.Create(ctx, *admin); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := repo.Create(ctx, *superadmin); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	got, err := repo.FindAll(ctx)
+	if err != nil {
+		t.Fatalf("find all: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 roles, got %d", len(got))
 	}
 }

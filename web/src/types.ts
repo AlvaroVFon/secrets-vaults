@@ -8,11 +8,20 @@ export interface Secret {
 export interface Consumer {
   id: string;
   name: string;
+  apikey: string;
+  roleId: string;
+  active: boolean;
 }
 
-export interface ConsumerSecrets {
-  consumerId: string;
-  secrets: Secret[];
+export interface Role {
+  id: string;
+  name: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  username: string;
+  expiresAt: number;
 }
 
 export interface ApiResponse<T> {
