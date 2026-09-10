@@ -352,7 +352,7 @@ func (h *ManagementHandler) UpdateSecret(w http.ResponseWriter, r *http.Request)
 
 	updateReq.ID = id
 
-	if updateReq.Key == nil && updateReq.Value == nil {
+	if updateReq.Key == nil && updateReq.Value == nil && updateReq.IsSecret == nil {
 		h.badRequest(w, "No fields to update")
 		return
 	}

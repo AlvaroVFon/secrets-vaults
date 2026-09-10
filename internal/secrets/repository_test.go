@@ -64,7 +64,7 @@ func TestSecretsRepository_CreateAndFindAllByConsumerID(t *testing.T) {
 
 	consumerID := createConsumerForSecret(t, repo)
 
-	secret, err := NewSecret("db.password", "s3cret", consumerID)
+	secret, err := NewSecret("db.password", "s3cret", consumerID, true)
 	if err != nil {
 		t.Fatalf("new secret: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestSecretsRepository_FindAllByConsumerID(t *testing.T) {
 	}
 
 	for _, s := range expected {
-		secret, err := NewSecret(s.Key, s.Value, consumerID)
+		secret, err := NewSecret(s.Key, s.Value, consumerID, true)
 		if err != nil {
 			t.Fatalf("new secret: %v", err)
 		}
@@ -171,7 +171,7 @@ func TestSecretsRepository_FindAllFullByConsumerID(t *testing.T) {
 
 	consumerID := createConsumerForSecret(t, repo)
 
-	secret, err := NewSecret("db.password", "s3cret", consumerID)
+	secret, err := NewSecret("db.password", "s3cret", consumerID, true)
 	if err != nil {
 		t.Fatalf("new secret: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestSecretsRepository_CountByConsumerID(t *testing.T) {
 		t.Fatalf("expected 0, got %d", count)
 	}
 
-	secret, err := NewSecret("db.password", "s3cret", consumerID)
+	secret, err := NewSecret("db.password", "s3cret", consumerID, true)
 	if err != nil {
 		t.Fatalf("new secret: %v", err)
 	}
@@ -245,5 +245,59 @@ func TestSecretsRepository_CountByConsumerID_EmptyConsumerID(t *testing.T) {
 	_, err := repo.CountByConsumerID(ctx, "")
 	if !errors.Is(err, ErrEmptyArgument) {
 		t.Fatalf("expected ErrEmptyArgument, got %v", err)
+	}
+}
+
+func TestSecretsRepository_NotASecretRoundTrip(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	consumerID := createConsumerForSecret(t, repo)
+
+	secret, err := NewSecret("log.level", "debug", consumerID, false)
+	if err != nil {
+		t.Fatalf("new secret: %v", err)
+	}
+	if err := repo.Create(ctx, *secret); err != nil {
+		t.Fatalf("create secret: %v", err)
+	}
+
+	got, err := repo.FindAllFullByConsumerID(ctx, consumerID)
+	if err != nil {
+		t.Fatalf("find all full by consumerID: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 secret, got %d", len(got))
+	}
+	if got[0].IsSecret {
+		t.Error("expected IsSecret to be false")
+	}
+}
+
+func TestSecretsRepository_UpdateIsSecret(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	consumerID := createConsumerForSecret(t, repo)
+
+	secret, err := NewSecret("log.level", "debug", consumerID, false)
+	if err != nil {
+		t.Fatalf("new secret: %v", err)
+	}
+	if err := repo.Create(ctx, *secret); err != nil {
+		t.Fatalf("create secret: %v", err)
+	}
+
+	nowSecret := true
+	if err := repo.Update(ctx, UpdateSecretRequest{ID: secret.ID, IsSecret: &nowSecret}); err != nil {
+		t.Fatalf("update secret: %v", err)
+	}
+
+	got, err := repo.FindByID(ctx, secret.ID)
+	if err != nil {
+		t.Fatalf("find by id: %v", err)
+	}
+	if !got.IsSecret {
+		t.Error("expected IsSecret to be true after update")
 	}
 }

@@ -36,7 +36,7 @@ const deletingSecret = ref<Secret | null>(null)
 
 const roleName = computed(() => {
   const map = new Map(roles.value.map((r) => [r.id, r.name]))
-  return (id: string): string => map.get(id) ?? id
+  return (id: string): string => map.get(id) ?? ''
 })
 
 function handleError(err: unknown): void {
@@ -89,10 +89,6 @@ async function loadSecrets(consumerId: string): Promise<void> {
   } finally {
     loadingSecrets.value = false
   }
-}
-
-function shortId(id: string): string {
-  return id.length > 13 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id
 }
 
 function toggleVisible(id: string): void {
@@ -183,7 +179,7 @@ onMounted(loadConsumers)
             >
               <span class="dot" :class="c.active ? 'on' : 'off'"></span>
               <span class="nav-name">{{ c.name }}</span>
-              <span class="nav-role">{{ roleName(c.roleId) }}</span>
+              <span v-if="roleName(c.roleId)" class="nav-role">{{ roleName(c.roleId) }}</span>
             </button>
           </li>
         </ul>
@@ -201,7 +197,6 @@ onMounted(loadConsumers)
       <header class="topbar">
         <div v-if="selected" class="topbar-info">
           <h1>{{ selected.name }}</h1>
-          <code class="muted" :title="selected.id">{{ shortId(selected.id) }}</code>
           <span class="badge" :class="selected.active ? 'on' : 'off'">
             {{ selected.active ? 'Activo' : 'Inactivo' }}
           </span>
@@ -245,10 +240,16 @@ onMounted(loadConsumers)
             <span class="table-actions">Acciones</span>
           </div>
           <div v-for="secret in secrets" :key="secret.id" class="table-row">
-            <code class="key">{{ secret.key }}</code>
-            <code class="value">{{ visible.has(secret.id) ? secret.value : '••••••••' }}</code>
+            <div class="key-cell">
+              <code class="key">{{ secret.key }}</code>
+              <span class="badge" :class="secret.isSecret ? 'secret' : 'config'">
+                {{ secret.isSecret ? 'secret' : 'config' }}
+              </span>
+            </div>
+            <code class="value">{{ !secret.isSecret || visible.has(secret.id) ? secret.value : '••••••••' }}</code>
             <div class="table-actions row">
               <button
+                v-if="secret.isSecret"
                 class="btn ghost icon"
                 @click="toggleVisible(secret.id)"
                 :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"

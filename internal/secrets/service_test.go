@@ -89,8 +89,40 @@ func TestSecretsService_Create(t *testing.T) {
 	if secret.ID == "" {
 		t.Error("expected non-empty ID")
 	}
+	if !secret.IsSecret {
+		t.Error("expected IsSecret to default to true")
+	}
 	if got.ID != secret.ID {
 		t.Errorf("repository received secret with ID %q, returned %q", got.ID, secret.ID)
+	}
+}
+
+func TestSecretsService_Create_NotASecret(t *testing.T) {
+	consumerID := uuid.New().String()
+	notASecret := false
+
+	var got Secret
+	service := NewSecretsService(&mockRepository{
+		createFunc: func(_ context.Context, secret Secret) error {
+			got = secret
+			return nil
+		},
+	})
+
+	secret, err := service.Create(context.Background(), CreateSecretRequest{
+		Key:        "log.level",
+		Value:      "debug",
+		ConsumerID: consumerID,
+		IsSecret:   &notASecret,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if secret.IsSecret {
+		t.Error("expected IsSecret to be false")
+	}
+	if got.IsSecret {
+		t.Error("expected repository to receive IsSecret false")
 	}
 }
 

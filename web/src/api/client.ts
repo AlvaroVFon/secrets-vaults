@@ -77,18 +77,19 @@ export function createSecret(
   consumerId: string,
   key: string,
   value: string,
+  isSecret: boolean,
 ): Promise<Secret> {
   return api<Secret>('/management/secrets', {
     method: 'POST',
     token,
-    body: { consumerId, key, value },
+    body: { consumerId, key, value, isSecret },
   });
 }
 
 export function updateSecret(
   token: string,
   id: string,
-  patch: { key?: string; value?: string },
+  patch: { key?: string; value?: string; isSecret?: boolean },
 ): Promise<Secret> {
   return api<Secret>(`/management/secrets/${id}`, {
     method: 'PUT',

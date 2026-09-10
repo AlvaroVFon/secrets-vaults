@@ -3,6 +3,7 @@ export interface Secret {
   key: string;
   value: string;
   consumerId: string;
+  isSecret: boolean;
 }
 
 export interface Consumer {

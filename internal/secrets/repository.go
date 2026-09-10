@@ -24,15 +24,15 @@ func NewSecretsRepository(store *pgxpool.Pool) *SecretsRepository {
 }
 
 func (r *SecretsRepository) Create(ctx context.Context, secret Secret) error {
-	query := "INSERT INTO secrets (id, key, value, consumer_id) VALUES ($1, $2, $3, $4)"
-	if _, err := r.store.Exec(ctx, query, secret.ID, secret.Key, secret.Value, secret.ConsumerID); err != nil {
+	query := "INSERT INTO secrets (id, key, value, consumer_id, is_secret) VALUES ($1, $2, $3, $4, $5)"
+	if _, err := r.store.Exec(ctx, query, secret.ID, secret.Key, secret.Value, secret.ConsumerID, secret.IsSecret); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (r *SecretsRepository) FindAll(ctx context.Context) ([]Secret, error) {
-	query := "SELECT id, key, value, consumer_id FROM secrets"
+	query := "SELECT id, key, value, consumer_id, is_secret FROM secrets"
 	secrets := make([]Secret, 0)
 
 	rows, err := r.store.Query(ctx, query)
@@ -43,7 +43,7 @@ func (r *SecretsRepository) FindAll(ctx context.Context) ([]Secret, error) {
 
 	for rows.Next() {
 		var secret Secret
-		if err := rows.Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID); err != nil {
+		if err := rows.Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID, &secret.IsSecret); err != nil {
 			return nil, err
 		}
 		secrets = append(secrets, secret)
@@ -64,10 +64,10 @@ func (r *SecretsRepository) FindByID(ctx context.Context, id string) (*Secret, e
 		return nil, fmt.Errorf("%w: %q", ErrInvalidUUID, id)
 	}
 
-	query := "SELECT id, key, value, consumer_id FROM secrets WHERE id=$1"
+	query := "SELECT id, key, value, consumer_id, is_secret FROM secrets WHERE id=$1"
 
 	var secret Secret
-	err := r.store.QueryRow(ctx, query, id).Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID)
+	err := r.store.QueryRow(ctx, query, id).Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID, &secret.IsSecret)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("%w secret with id: %q", ErrNotFound, id)
@@ -86,7 +86,7 @@ func (r *SecretsRepository) FindAllByConsumerID(ctx context.Context, consumerID 
 		return nil, err
 	}
 
-	query := "SELECT key, value FROM secrets WHERE consumer_id=$1"
+	query := "SELECT key, value, is_secret FROM secrets WHERE consumer_id=$1"
 	secrets := make([]Secret, 0)
 
 	rows, err := r.store.Query(ctx, query, consumerID)
@@ -98,7 +98,7 @@ func (r *SecretsRepository) FindAllByConsumerID(ctx context.Context, consumerID 
 
 	for rows.Next() {
 		var secret Secret
-		if err := rows.Scan(&secret.Key, &secret.Value); err != nil {
+		if err := rows.Scan(&secret.Key, &secret.Value, &secret.IsSecret); err != nil {
 			return nil, err
 		}
 
@@ -120,7 +120,7 @@ func (r *SecretsRepository) FindAllFullByConsumerID(ctx context.Context, consume
 		return nil, fmt.Errorf("%w: %q", ErrInvalidUUID, consumerID)
 	}
 
-	query := "SELECT id, key, value, consumer_id FROM secrets WHERE consumer_id=$1"
+	query := "SELECT id, key, value, consumer_id, is_secret FROM secrets WHERE consumer_id=$1"
 	secrets := make([]Secret, 0)
 
 	rows, err := r.store.Query(ctx, query, consumerID)
@@ -131,7 +131,7 @@ func (r *SecretsRepository) FindAllFullByConsumerID(ctx context.Context, consume
 
 	for rows.Next() {
 		var secret Secret
-		if err := rows.Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID); err != nil {
+		if err := rows.Scan(&secret.ID, &secret.Key, &secret.Value, &secret.ConsumerID, &secret.IsSecret); err != nil {
 			return nil, err
 		}
 		secrets = append(secrets, secret)
@@ -171,8 +171,8 @@ func (r *SecretsRepository) Update(ctx context.Context, req UpdateSecretRequest)
 		return fmt.Errorf("%w: %q", ErrInvalidUUID, req.ID)
 	}
 
-	sets := make([]string, 0, 2)
-	args := make([]any, 0, 3)
+	sets := make([]string, 0, 3)
+	args := make([]any, 0, 4)
 
 	if req.Key != nil {
 		args = append(args, *req.Key)
@@ -181,6 +181,10 @@ func (r *SecretsRepository) Update(ctx context.Context, req UpdateSecretRequest)
 	if req.Value != nil {
 		args = append(args, *req.Value)
 		sets = append(sets, fmt.Sprintf("value=$%d", len(args)))
+	}
+	if req.IsSecret != nil {
+		args = append(args, *req.IsSecret)
+		sets = append(sets, fmt.Sprintf("is_secret=$%d", len(args)))
 	}
 
 	if len(sets) == 0 {
