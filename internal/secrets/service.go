@@ -9,12 +9,14 @@ type CreateSecretRequest struct {
 	Key        string `json:"key" validate:"required"`
 	Value      string `json:"value" validate:"required"`
 	ConsumerID string `json:"consumerId" validate:"required,uuid"`
+	IsSecret   *bool  `json:"isSecret"`
 }
 
 type UpdateSecretRequest struct {
-	ID    string  `json:"id" validate:"required,uuid"`
-	Key   *string `json:"key" validate:"omitempty"`
-	Value *string `json:"value" validate:"omitempty"`
+	ID       string  `json:"id" validate:"required,uuid"`
+	Key      *string `json:"key" validate:"omitempty"`
+	Value    *string `json:"value" validate:"omitempty"`
+	IsSecret *bool   `json:"isSecret"`
 }
 
 type repository interface {
@@ -39,7 +41,12 @@ func NewSecretsService(repo repository) *SecretsService {
 }
 
 func (s *SecretsService) Create(ctx context.Context, createSecretRequest CreateSecretRequest) (*Secret, error) {
-	secret, err := NewSecret(createSecretRequest.Key, createSecretRequest.Value, createSecretRequest.ConsumerID)
+	isSecret := true
+	if createSecretRequest.IsSecret != nil {
+		isSecret = *createSecretRequest.IsSecret
+	}
+
+	secret, err := NewSecret(createSecretRequest.Key, createSecretRequest.Value, createSecretRequest.ConsumerID, isSecret)
 	if err != nil {
 		return nil, err
 	}

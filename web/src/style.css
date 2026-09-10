@@ -175,6 +175,25 @@ select:focus-visible {
   font-size: 0.88rem;
 }
 
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.checkbox-field input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.checkbox-field span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 input,
 select {
   background: var(--bg);
@@ -456,6 +475,16 @@ select:focus {
   color: #ff8a8d;
 }
 
+.badge.secret {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.badge.config {
+  background: rgba(210, 153, 34, 0.16);
+  color: var(--warning);
+}
+
 /* ---------- Secrets table ---------- */
 
 .secrets-table {
@@ -497,6 +526,13 @@ select:focus {
 .key {
   color: var(--primary);
   word-break: break-all;
+}
+
+.key-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .value {

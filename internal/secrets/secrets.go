@@ -18,9 +18,10 @@ type Secret struct {
 	Key        string `json:"key"`
 	Value      string `json:"value"`
 	ConsumerID string `json:"consumerId"`
+	IsSecret   bool   `json:"isSecret"`
 }
 
-func NewSecret(key, value, consumerID string) (*Secret, error) {
+func NewSecret(key, value, consumerID string, isSecret bool) (*Secret, error) {
 	if key == "" {
 		return nil, fmt.Errorf("%w: %q", ErrEmptyArgument, "key")
 	}
@@ -41,5 +42,6 @@ func NewSecret(key, value, consumerID string) (*Secret, error) {
 		Key:        key,
 		Value:      value,
 		ConsumerID: consumerID,
+		IsSecret:   isSecret,
 	}, nil
 }
