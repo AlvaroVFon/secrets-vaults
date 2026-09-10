@@ -1,4 +1,4 @@
-import type { ApiResponse, Consumer, LoginResponse, Role, Secret } from '../types';
+import type { ApiResponse, ConfigLanguage, ConfigOutput, Consumer, LoginResponse, Role, Secret } from '../types';
 
 export class ApiError extends Error {
   status: number;
@@ -100,4 +100,15 @@ export function updateSecret(
 
 export function deleteSecret(token: string, id: string): Promise<void> {
   return api<void>(`/management/secrets/${id}`, { method: 'DELETE', token });
+}
+
+export function fetchConsumerConfig(
+  token: string,
+  consumerId: string,
+  lang: ConfigLanguage,
+): Promise<ConfigOutput> {
+  return api<ConfigOutput>(
+    `/management/consumers/${encodeURIComponent(consumerId)}/config?lang=${lang}`,
+    { token },
+  );
 }

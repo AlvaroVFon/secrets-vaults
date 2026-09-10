@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"secrets-vault/internal/auth"
+	"secrets-vault/internal/configgen"
 	"secrets-vault/internal/consumers"
 	"secrets-vault/internal/httpx"
 	"secrets-vault/internal/roles"
@@ -128,6 +129,53 @@ func (h *ManagementHandler) FindAllSecrets(w http.ResponseWriter, r *http.Reques
 	}
 
 	httpx.WriteResponse(w, http.StatusOK, httpx.Response{Status: http.StatusOK, Message: "Secrets found successfully", Data: grouped})
+}
+
+// GetConsumerConfig generates a typed configuration definition for a consumer
+// from its registered secrets. The language is selected with the lang query
+// parameter (ts or go, defaults to ts).
+func (h *ManagementHandler) GetConsumerConfig(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if h.authorize(w, r) == nil {
+		return
+	}
+
+	lang, err := configgen.ParseLanguage(r.URL.Query().Get("lang"))
+	if err != nil {
+		h.badRequest(w, err.Error())
+		return
+	}
+
+	id := r.PathValue("id")
+
+	consumer, err := h.consumersService.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, consumers.ErrorNotFound) {
+			httpx.WriteResponse(w, http.StatusNotFound, httpx.Response{Status: http.StatusNotFound, Message: "Consumer not found"})
+			return
+		}
+		h.internalServerError(w)
+		return
+	}
+
+	consumerSecrets, err := h.secretsService.FindAllFullByConsumerID(ctx, id)
+	if err != nil {
+		h.internalServerError(w)
+		return
+	}
+
+	result, err := configgen.Generate(consumer.Name, consumerSecrets, lang)
+	if err != nil {
+		h.internalServerError(w)
+		return
+	}
+
+	httpx.WriteResponse(w, http.StatusOK, httpx.Response{
+		Status:  http.StatusOK,
+		Message: "Consumer config generated successfully",
+		Data:    result,
+	})
 }
 
 func (h *ManagementHandler) FindAllConsumers(w http.ResponseWriter, r *http.Request) {

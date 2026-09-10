@@ -631,3 +631,65 @@ select:focus {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ---------- Config generator ---------- */
+
+.config-modal .modal {
+  max-width: 760px;
+}
+
+.config-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.segmented-item {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 550;
+  padding: 0.4rem 0.9rem;
+}
+
+.segmented-item.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.filename {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.config-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.config-preview code {
+  font-size: 0.82rem;
+  white-space: pre;
+}
+
+.config-preview .hljs {
+  background: transparent;
+  padding: 0;
+}
