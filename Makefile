@@ -2,7 +2,7 @@ MIGRATE        := go run -tags 'postgres' github.com/golang-migrate/migrate/v4/c
 MIGRATIONS_DIR := migrations
 DATABASE_URL   ?= postgres://postgres:postgres@localhost:5432/app?sslmode=disable
 
-.PHONY: help migrate-up migrate-down migrate-down-all migrate-force migrate-version migrate-create migrate-reset test docker-test docker-test-down web-install web-dev web-build up down
+.PHONY: help migrate-up migrate-down migrate-down-all migrate-force migrate-version migrate-create migrate-reset test docker-test docker-test-down web-install web-dev web-build up down deploy
 
 help: ## Muestra los comandos disponibles
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -53,3 +53,9 @@ up: ## Levanta el stack completo (postgres + migrate + api + web)
 
 down: ## Detiene el stack completo
 	docker compose down
+
+deploy: ## Actualiza el codigo desplegado sin reiniciar ni borrar la BD
+	git pull --ff-only
+	docker compose up -d --no-deps postgres
+	docker compose run --rm --no-deps migrate
+	docker compose up -d --build --no-deps api web
