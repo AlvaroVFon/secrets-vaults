@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { ApiError, createConsumer } from '../api/client'
 import { logout, storedToken } from '../stores/auth'
 import type { Role } from '../types'
+import { generateApikey } from '../utils/apikey'
 import ModalBase from './ModalBase.vue'
 
 const props = defineProps<{ roles: Role[] }>()
@@ -10,9 +11,15 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
 
 const name = ref('')
 const apikey = ref('')
+const showApikey = ref(false)
 const roleId = ref('')
 const error = ref('')
 const loading = ref(false)
+
+function onGenerate(): void {
+  apikey.value = generateApikey()
+  showApikey.value = true
+}
 
 async function onSave(): Promise<void> {
   error.value = ''
@@ -61,7 +68,23 @@ async function onSave(): Promise<void> {
       </label>
       <label class="field">
         <span>Apikey</span>
-        <input v-model="apikey" type="password" placeholder="clave-secreta" autocomplete="off" />
+        <div class="input-row">
+          <input
+            v-model="apikey"
+            :type="showApikey ? 'text' : 'password'"
+            placeholder="clave-secreta"
+            autocomplete="off"
+          />
+          <button
+            type="button"
+            class="btn ghost"
+            @click="showApikey = !showApikey"
+            :aria-label="showApikey ? 'Ocultar' : 'Mostrar'"
+          >
+            {{ showApikey ? '🙈' : '👁️' }}
+          </button>
+          <button type="button" class="btn" @click="onGenerate">Generar</button>
+        </div>
       </label>
       <label class="field">
         <span>Rol</span>

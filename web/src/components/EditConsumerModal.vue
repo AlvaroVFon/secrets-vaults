@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { ApiError, updateConsumer } from '../api/client'
 import { logout, storedToken } from '../stores/auth'
 import type { Consumer, Role } from '../types'
+import { generateApikey } from '../utils/apikey'
 import ModalBase from './ModalBase.vue'
 
 const props = defineProps<{ consumer: Consumer; roles: Role[] }>()
@@ -11,9 +12,14 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'updated'): void }>()
 const name = ref(props.consumer.name)
 const roleId = ref(props.consumer.roleId)
 const showApikey = ref(false)
-const newApikey = ref('')
+const newApikey = ref(props.consumer.apikey)
 const error = ref('')
 const loading = ref(false)
+
+function onGenerate(): void {
+  newApikey.value = generateApikey()
+  showApikey.value = true
+}
 
 async function onSave(): Promise<void> {
   error.value = ''
@@ -25,7 +31,7 @@ async function onSave(): Promise<void> {
   if (roleId.value !== props.consumer.roleId) {
     patch.roleId = roleId.value
   }
-  if (newApikey.value.trim() !== '') {
+  if (newApikey.value.trim() !== '' && newApikey.value !== props.consumer.apikey) {
     patch.apikey = newApikey.value.trim()
   }
 
@@ -63,13 +69,12 @@ async function onSave(): Promise<void> {
         </select>
       </label>
       <label class="field">
-        <span>Nueva apikey (opcional)</span>
+        <span>Apikey</span>
         <div class="input-row">
           <input
             v-model="newApikey"
             :type="showApikey ? 'text' : 'password'"
             autocomplete="off"
-            placeholder="Dejar vacío para no cambiarla"
           />
           <button
             type="button"
@@ -79,6 +84,7 @@ async function onSave(): Promise<void> {
           >
             {{ showApikey ? '🙈' : '👁️' }}
           </button>
+          <button type="button" class="btn" @click="onGenerate">Generar</button>
         </div>
       </label>
       <p v-if="error" class="error">{{ error }}</p>
