@@ -16,6 +16,7 @@ import CreateConsumerModal from '../components/CreateConsumerModal.vue'
 import CreateSecretModal from '../components/CreateSecretModal.vue'
 import EditConsumerModal from '../components/EditConsumerModal.vue'
 import EditSecretModal from '../components/EditSecretModal.vue'
+import GenerateConfigModal from '../components/GenerateConfigModal.vue'
 
 const consumers = ref<Consumer[]>([])
 const roles = ref<Role[]>([])
@@ -33,6 +34,7 @@ const deletingConsumer = ref<Consumer | null>(null)
 const showCreateSecret = ref(false)
 const editingSecret = ref<Secret | null>(null)
 const deletingSecret = ref<Secret | null>(null)
+const showConfig = ref(false)
 
 const roleName = computed(() => {
   const map = new Map(roles.value.map((r) => [r.id, r.name]))
@@ -77,6 +79,7 @@ async function select(consumer: Consumer): Promise<void> {
   secrets.value = []
   error.value = ''
   visible.value = new Set()
+  showConfig.value = false
   await loadSecrets(consumer.id)
 }
 
@@ -223,6 +226,7 @@ onMounted(loadConsumers)
             </button>
             <button class="btn" @click="editingConsumer = selected">Editar consumer</button>
             <button class="btn danger" @click="deletingConsumer = selected">Eliminar</button>
+            <button class="btn" @click="showConfig = true">Generar config</button>
             <button class="btn primary" @click="showCreateSecret = true">＋ Nuevo secret</button>
           </div>
         </div>
@@ -321,5 +325,11 @@ onMounted(loadConsumers)
     :message="`¿Eliminar el secret «${deletingSecret.key}»?`"
     @close="deletingSecret = null"
     @confirm="onDeleteSecret"
+  />
+
+  <GenerateConfigModal
+    v-if="showConfig && selected"
+    :consumer="selected"
+    @close="showConfig = false"
   />
 </template>

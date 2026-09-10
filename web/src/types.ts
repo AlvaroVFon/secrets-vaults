@@ -30,3 +30,11 @@ export interface ApiResponse<T> {
   message: string;
   data?: T;
 }
+
+export type ConfigLanguage = 'ts' | 'go';
+
+export interface ConfigOutput {
+  language: ConfigLanguage;
+  filename: string;
+  code: string;
+}

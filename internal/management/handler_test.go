@@ -8,10 +8,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"secrets-vault/internal/auth"
+	"secrets-vault/internal/configgen"
 	"secrets-vault/internal/consumers"
 	"secrets-vault/internal/httpx"
 	"secrets-vault/internal/roles"
@@ -186,6 +188,7 @@ func TestManagement_NoToken_Unauthorized(t *testing.T) {
 		body   string
 	}{
 		{http.MethodGet, "/management/consumers", ""},
+		{http.MethodGet, "/management/consumers/" + uuid.New().String() + "/config", ""},
 		{http.MethodGet, "/management/secrets", ""},
 		{http.MethodPost, "/management/secrets", `{"key":"k","value":"v"}`},
 		{http.MethodPut, "/management/secrets/" + uuid.New().String(), `{"key":"k"}`},
@@ -350,6 +353,141 @@ func TestManagement_FindSecretsByConsumer_ConsumerNotFound(t *testing.T) {
 	)
 
 	rec := doRequest(t, router, http.MethodGet, "/management/secrets?consumerId="+uuid.New().String(), "", token)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, rec.Code)
+	}
+
+	res := decodeResponse(t, rec)
+	if res.Message != "Consumer not found" {
+		t.Errorf("expected message %q, got %q", "Consumer not found", res.Message)
+	}
+}
+
+func TestManagement_GetConsumerConfig_Success(t *testing.T) {
+	token := testToken(t)
+	consumer := testConsumer()
+	consumer.Name = "my-service"
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByIDFunc: func(_ context.Context, id string) (*consumers.Consumer, error) {
+				if id != consumer.ID {
+					t.Errorf("expected id %q, got %q", consumer.ID, id)
+				}
+				return consumer, nil
+			},
+		},
+		&mockRolesService{},
+		&mockSecretsService{
+			findAllFullByConsumerFunc: func(_ context.Context, consumerID string) ([]secrets.Secret, error) {
+				if consumerID != consumer.ID {
+					t.Errorf("expected consumerID %q, got %q", consumer.ID, consumerID)
+				}
+				return []secrets.Secret{
+					{Key: "db.host", Value: "localhost"},
+					{Key: "db.port", Value: "5432"},
+				}, nil
+			},
+		},
+	)
+
+	rec := doRequest(t, router, http.MethodGet, "/management/consumers/"+consumer.ID+"/config", "", token)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var result configgen.Result
+	raw, err := json.Marshal(decodeResponse(t, rec).Data)
+	if err != nil {
+		t.Fatalf("marshal data: %v", err)
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+
+	if result.Language != configgen.LangTS {
+		t.Errorf("expected language %q, got %q", configgen.LangTS, result.Language)
+	}
+	if result.Filename != "my-service.config.ts" {
+		t.Errorf("unexpected filename %q", result.Filename)
+	}
+	for _, want := range []string{"export interface MyServiceConfig", "host: string;", "port: number;"} {
+		if !strings.Contains(result.Code, want) {
+			t.Errorf("code missing %q:\n%s", want, result.Code)
+		}
+	}
+}
+
+func TestManagement_GetConsumerConfig_Go(t *testing.T) {
+	token := testToken(t)
+	consumer := testConsumer()
+	consumer.Name = "my-service"
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByIDFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return consumer, nil
+			},
+		},
+		&mockRolesService{},
+		&mockSecretsService{
+			findAllFullByConsumerFunc: func(_ context.Context, _ string) ([]secrets.Secret, error) {
+				return []secrets.Secret{{Key: "enabled", Value: "true"}}, nil
+			},
+		},
+	)
+
+	rec := doRequest(t, router, http.MethodGet, "/management/consumers/"+consumer.ID+"/config?lang=go", "", token)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, rec.Code)
+	}
+
+	var result configgen.Result
+	raw, err := json.Marshal(decodeResponse(t, rec).Data)
+	if err != nil {
+		t.Fatalf("marshal data: %v", err)
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+
+	if result.Language != configgen.LangGo {
+		t.Errorf("expected language %q, got %q", configgen.LangGo, result.Language)
+	}
+	if !strings.Contains(result.Code, "type MyServiceConfig struct") {
+		t.Errorf("unexpected code:\n%s", result.Code)
+	}
+}
+
+func TestManagement_GetConsumerConfig_InvalidLanguage(t *testing.T) {
+	token := testToken(t)
+
+	router := setupManagementRouter(&mockConsumersService{}, &mockRolesService{}, &mockSecretsService{})
+
+	rec := doRequest(t, router, http.MethodGet, "/management/consumers/"+uuid.New().String()+"/config?lang=python", "", token)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+}
+
+func TestManagement_GetConsumerConfig_ConsumerNotFound(t *testing.T) {
+	token := testToken(t)
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByIDFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return nil, consumers.ErrorNotFound
+			},
+		},
+		&mockRolesService{},
+		&mockSecretsService{},
+	)
+
+	rec := doRequest(t, router, http.MethodGet, "/management/consumers/"+uuid.New().String()+"/config", "", token)
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected status %d, got %d", http.StatusNotFound, rec.Code)
