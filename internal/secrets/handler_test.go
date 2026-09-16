@@ -195,6 +195,33 @@ func TestSecretsHandler_Create_ServiceError(t *testing.T) {
 	}
 }
 
+func TestSecretsHandler_Create_DuplicatedKey(t *testing.T) {
+	consumer := testConsumer()
+	handler := NewSecretsHandler(
+		&mockSecretsService{
+			createFunc: func(_ context.Context, _ CreateSecretRequest) (*Secret, error) {
+				return nil, ErrDuplicatedKey
+			},
+		},
+		&mockConsumersService{
+			findByApikeyFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return consumer, nil
+			},
+		},
+	)
+
+	rec := doRequest(t, handler.Create, http.MethodPost, "/secrets", `{"key":"db.password","value":"s3cret"}`, consumer.Apikey)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, rec.Code)
+	}
+
+	res := decodeResponse(t, rec)
+	if res.Message != "Secret key already exists" {
+		t.Errorf("expected message %q, got %q", "Secret key already exists", res.Message)
+	}
+}
+
 func TestSecretsHandler_Create_Success(t *testing.T) {
 	consumer := testConsumer()
 	expected := &Secret{

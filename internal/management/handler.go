@@ -372,6 +372,10 @@ func (h *ManagementHandler) CreateSecret(w http.ResponseWriter, r *http.Request)
 
 	secret, err := h.secretsService.Create(ctx, createRequest)
 	if err != nil {
+		if errors.Is(err, secrets.ErrDuplicatedKey) {
+			httpx.WriteResponse(w, http.StatusConflict, httpx.Response{Status: http.StatusConflict, Message: "Secret key already exists"})
+			return
+		}
 		h.internalServerError(w)
 		return
 	}
@@ -418,6 +422,10 @@ func (h *ManagementHandler) UpdateSecret(w http.ResponseWriter, r *http.Request)
 		}
 		if errors.Is(err, secrets.ErrEmptyArgument) || errors.Is(err, secrets.ErrInvalidUUID) {
 			h.badRequest(w, err.Error())
+			return
+		}
+		if errors.Is(err, secrets.ErrDuplicatedKey) {
+			httpx.WriteResponse(w, http.StatusConflict, httpx.Response{Status: http.StatusConflict, Message: "Secret key already exists"})
 			return
 		}
 		h.internalServerError(w)
