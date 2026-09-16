@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ShieldCheck } from '@lucide/vue'
 import { ApiError, login } from '../api/client'
 import { login as setSession } from '../stores/auth'
 import ThemeToggle from '../components/ThemeToggle.vue'
@@ -44,7 +45,9 @@ async function onSubmit(): Promise<void> {
     <ThemeToggle />
     <form class="login-card" @submit.prevent="onSubmit">
       <div class="login-brand">
-        <div class="login-logo">🔐</div>
+        <div class="login-logo">
+          <ShieldCheck :size="44" />
+        </div>
         <h1>Secrets Vault</h1>
         <p class="muted">Panel de gestión</p>
       </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Eye, EyeOff } from '@lucide/vue'
 import { ApiError, updateSecret } from '../api/client'
 import { logout, storedToken } from '../stores/auth'
 import type { Secret } from '../types'
@@ -59,11 +60,13 @@ async function onSave(): Promise<void> {
           <button
             v-if="isSecret"
             type="button"
-            class="btn ghost"
+            class="btn ghost icon"
             @click="showValue = !showValue"
             :aria-label="showValue ? 'Ocultar' : 'Mostrar'"
+            :title="showValue ? 'Ocultar' : 'Mostrar'"
           >
-            {{ showValue ? '🙈' : '👁️' }}
+            <EyeOff v-if="showValue" :size="16" />
+            <Eye v-else :size="16" />
           </button>
         </div>
       </label>
