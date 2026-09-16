@@ -41,7 +41,7 @@ func NewSecretsService(repo repository) *SecretsService {
 }
 
 func (s *SecretsService) Create(ctx context.Context, createSecretRequest CreateSecretRequest) (*Secret, error) {
-	isSecret := true
+	isSecret := false
 	if createSecretRequest.IsSecret != nil {
 		isSecret = *createSecretRequest.IsSecret
 	}

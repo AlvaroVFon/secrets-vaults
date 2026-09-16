@@ -10,7 +10,7 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
 
 const key = ref('')
 const value = ref('')
-const isSecret = ref(true)
+const isSecret = ref(false)
 const error = ref('')
 const loading = ref(false)
 

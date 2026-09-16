@@ -149,8 +149,9 @@ Cámbiala o desactívala en producción.
 1. **Login** en `/` con `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
 2. **Consumers**: crea una aplicación consumidora con un nombre, una `apikey` y
    un rol (`superadmin` o `admin`).
-3. **Secretos**: añade pares clave/valor al consumer. Marca `isSecret` para
-   ocultar el valor en la interfaz.
+3. **Secretos**: añade pares clave/valor al consumer. Los valores se guardan
+   como *config* (visibles) por defecto; marca `isSecret` para ocultar el valor
+   en la interfaz.
 4. **Generar interfaz**: desde un consumer puedes exportar una definición de
    configuración tipada en **TypeScript** (`<consumer>.config.ts`) o **Go**
    (`<consumer>_config.go`). Las claves con notación de punto (`db.host`) se
