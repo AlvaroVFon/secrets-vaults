@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { Check, Copy } from '@lucide/vue'
 import hljs from 'highlight.js/lib/core'
 import go from 'highlight.js/lib/languages/go'
 import typescript from 'highlight.js/lib/languages/typescript'
-import 'highlight.js/styles/github-dark.css'
 import { ApiError, fetchConsumerConfig } from '../api/client'
 import { logout, storedToken } from '../stores/auth'
 import type { ConfigLanguage, Consumer } from '../types'
@@ -95,7 +95,9 @@ onMounted(load)
       <div class="row">
         <span v-if="filename" class="muted filename">{{ filename }}</span>
         <button type="button" class="btn" :disabled="!code || loading" @click="copy">
-          {{ copied ? 'Copiado ✓' : 'Copiar' }}
+          <Check v-if="copied" :size="16" />
+          <Copy v-else :size="16" />
+          {{ copied ? 'Copiado' : 'Copiar' }}
         </button>
       </div>
     </div>

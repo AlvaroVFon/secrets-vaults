@@ -4,19 +4,68 @@
   --surface-2: #12151b;
   --border: #262b36;
   --border-soft: #1f242e;
+  --border-hover: #3a4150;
   --text: #e6e9ef;
   --muted: #8b93a1;
   --primary: #5b8cff;
   --primary-soft: rgba(91, 140, 255, 0.14);
+  --primary-hover: #6d98ff;
+  --primary-glow: rgba(91, 140, 255, 0.14);
+  --primary-active-border: rgba(91, 140, 255, 0.35);
+  --on-primary: #fff;
   --danger: #e5484d;
   --danger-soft: rgba(229, 72, 77, 0.12);
+  --danger-hover: #ef5a5f;
+  --danger-text: #ff8a8d;
   --success: #2ea86b;
+  --success-soft: rgba(46, 168, 107, 0.16);
+  --success-text: #4ecf8d;
   --warning: #d29922;
+  --warning-soft: rgba(210, 153, 34, 0.16);
+  --hover: rgba(255, 255, 255, 0.04);
+  --hover-strong: rgba(255, 255, 255, 0.06);
+  --backdrop: rgba(8, 10, 13, 0.72);
+  --scrollbar: #2c313c;
+  --scrollbar-hover: #3a4150;
   --radius: 10px;
   --radius-sm: 7px;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --border: #d8dde5;
+  --border-soft: #e6e9ee;
+  --border-hover: #c2c9d4;
+  --text: #1c2129;
+  --muted: #5f6775;
+  --primary: #2f6bff;
+  --primary-soft: rgba(47, 107, 255, 0.12);
+  --primary-hover: #1f5ae6;
+  --primary-glow: rgba(47, 107, 255, 0.14);
+  --primary-active-border: rgba(47, 107, 255, 0.4);
+  --on-primary: #fff;
+  --danger: #d92d34;
+  --danger-soft: rgba(217, 45, 52, 0.1);
+  --danger-hover: #c0262c;
+  --danger-text: #c0343a;
+  --success: #1f9d5f;
+  --success-soft: rgba(31, 157, 95, 0.14);
+  --success-text: #1f9d5f;
+  --warning: #b47d0a;
+  --warning-soft: rgba(180, 125, 10, 0.14);
+  --hover: rgba(0, 0, 0, 0.04);
+  --hover-strong: rgba(0, 0, 0, 0.06);
+  --backdrop: rgba(28, 33, 41, 0.45);
+  --scrollbar: #c7ccd4;
+  --scrollbar-hover: #aab1bc;
+  --shadow: 0 8px 30px rgba(15, 17, 21, 0.12);
+  color-scheme: light;
 }
 
 * {
@@ -35,6 +84,7 @@ body {
   font-family: var(--sans);
   font-size: 0.95rem;
   line-height: 1.5;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 #app {
@@ -72,6 +122,10 @@ code {
 /* ---------- Buttons ---------- */
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -80,14 +134,19 @@ code {
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 550;
+  line-height: 1.2;
   padding: 0.5rem 0.95rem;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
   white-space: nowrap;
 }
 
+.btn svg {
+  flex-shrink: 0;
+}
+
 .btn:hover:not(:disabled) {
-  border-color: #3a4150;
-  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-hover);
+  background: var(--hover);
 }
 
 .btn:active:not(:disabled) {
@@ -102,23 +161,23 @@ code {
 .btn.primary {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: #6d98ff;
-  border-color: #6d98ff;
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .btn.danger {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn.danger:hover:not(:disabled) {
-  background: #ef5a5f;
-  border-color: #ef5a5f;
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
 }
 
 .btn.ghost {
@@ -128,13 +187,13 @@ code {
 }
 
 .btn.ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-strong);
   border-color: transparent;
 }
 
 .btn.ghost.icon {
-  font-size: 1rem;
-  padding: 0.25rem 0.45rem;
+  padding: 0.4rem;
+  line-height: 0;
 }
 
 .btn.danger-text {
@@ -143,7 +202,7 @@ code {
 
 .btn.danger-text:hover:not(:disabled) {
   background: var(--danger-soft);
-  color: #ff8a8d;
+  color: var(--danger-text);
 }
 
 .btn:focus-visible,
@@ -237,13 +296,20 @@ select:focus {
 /* ---------- Login ---------- */
 
 .login {
+  position: relative;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: radial-gradient(1100px 500px at 50% -10%, rgba(91, 140, 255, 0.14), transparent 70%),
+  background: radial-gradient(1100px 500px at 50% -10%, var(--primary-glow), transparent 70%),
     var(--bg);
+}
+
+.login .theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
 }
 
 .login-card {
@@ -262,8 +328,10 @@ select:focus {
 }
 
 .login-logo {
-  font-size: 2.2rem;
-  margin-bottom: 0.4rem;
+  display: flex;
+  justify-content: center;
+  color: var(--primary);
+  margin-bottom: 0.6rem;
 }
 
 .login-brand h1 {
@@ -301,7 +369,9 @@ select:focus {
 }
 
 .brand-logo {
-  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary);
 }
 
 .sidebar-scroll {
@@ -346,12 +416,12 @@ select:focus {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--hover);
 }
 
 .nav-item.active {
   background: var(--primary-soft);
-  border-color: rgba(91, 140, 255, 0.35);
+  border-color: var(--primary-active-border);
 }
 
 .nav-item .dot {
@@ -363,7 +433,7 @@ select:focus {
 
 .dot.on {
   background: var(--success);
-  box-shadow: 0 0 0 3px rgba(46, 168, 107, 0.18);
+  box-shadow: 0 0 0 3px var(--success-soft);
 }
 
 .dot.off {
@@ -466,13 +536,13 @@ select:focus {
 }
 
 .badge.on {
-  background: rgba(46, 168, 107, 0.16);
-  color: #4ecf8d;
+  background: var(--success-soft);
+  color: var(--success-text);
 }
 
 .badge.off {
   background: var(--danger-soft);
-  color: #ff8a8d;
+  color: var(--danger-text);
 }
 
 .badge.secret {
@@ -481,7 +551,7 @@ select:focus {
 }
 
 .badge.config {
-  background: rgba(210, 153, 34, 0.16);
+  background: var(--warning-soft);
   color: var(--warning);
 }
 
@@ -551,8 +621,10 @@ select:focus {
 }
 
 .welcome-icon {
-  font-size: 2.4rem;
-  margin-bottom: 0.6rem;
+  display: flex;
+  justify-content: center;
+  color: var(--primary);
+  margin-bottom: 0.8rem;
 }
 
 .empty-state h2 {
@@ -565,7 +637,7 @@ select:focus {
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(8, 10, 13, 0.72);
+  background: var(--backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -619,13 +691,13 @@ select:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2c313c;
+  background: var(--scrollbar);
   border-radius: 8px;
   border: 2px solid var(--bg);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4150;
+  background: var(--scrollbar-hover);
 }
 
 ::-webkit-scrollbar-track {
@@ -666,7 +738,7 @@ select:focus {
 
 .segmented-item.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .filename {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Eye, EyeOff, Wand2 } from '@lucide/vue'
 import { ApiError, createConsumer } from '../api/client'
 import { logout, storedToken } from '../stores/auth'
 import type { Role } from '../types'
@@ -77,13 +78,18 @@ async function onSave(): Promise<void> {
           />
           <button
             type="button"
-            class="btn ghost"
+            class="btn ghost icon"
             @click="showApikey = !showApikey"
             :aria-label="showApikey ? 'Ocultar' : 'Mostrar'"
+            :title="showApikey ? 'Ocultar' : 'Mostrar'"
           >
-            {{ showApikey ? '🙈' : '👁️' }}
+            <EyeOff v-if="showApikey" :size="16" />
+            <Eye v-else :size="16" />
           </button>
-          <button type="button" class="btn" @click="onGenerate">Generar</button>
+          <button type="button" class="btn" @click="onGenerate">
+            <Wand2 :size="16" />
+            Generar
+          </button>
         </div>
       </label>
       <label class="field">

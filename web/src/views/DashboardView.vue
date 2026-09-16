@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { Copy, Eye, EyeOff, Plus, ShieldCheck } from '@lucide/vue'
 import {
   ApiError,
   deleteConsumer,
@@ -17,6 +18,7 @@ import CreateSecretModal from '../components/CreateSecretModal.vue'
 import EditConsumerModal from '../components/EditConsumerModal.vue'
 import EditSecretModal from '../components/EditSecretModal.vue'
 import GenerateConfigModal from '../components/GenerateConfigModal.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const consumers = ref<Consumer[]>([])
 const roles = ref<Role[]>([])
@@ -166,7 +168,9 @@ onMounted(loadConsumers)
   <div class="shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-logo">🔐</span>
+        <span class="brand-logo">
+          <ShieldCheck :size="20" />
+        </span>
         <span>Secrets Vault</span>
       </div>
 
@@ -192,7 +196,8 @@ onMounted(loadConsumers)
       </div>
 
       <button class="btn primary sidebar-add" @click="showCreateConsumer = true">
-        ＋ Nuevo consumer
+        <Plus :size="16" />
+        Nuevo consumer
       </button>
     </aside>
 
@@ -209,6 +214,7 @@ onMounted(loadConsumers)
 
         <div class="topbar-actions">
           <span class="muted user-label">{{ currentUsername }}</span>
+          <ThemeToggle />
           <button class="btn ghost" @click="onLogout">Salir</button>
         </div>
       </header>
@@ -227,7 +233,10 @@ onMounted(loadConsumers)
             <button class="btn" @click="editingConsumer = selected">Editar consumer</button>
             <button class="btn danger" @click="deletingConsumer = selected">Eliminar</button>
             <button class="btn" @click="showConfig = true">Generar config</button>
-            <button class="btn primary" @click="showCreateSecret = true">＋ Nuevo secret</button>
+            <button class="btn primary" @click="showCreateSecret = true">
+              <Plus :size="16" />
+              Nuevo secret
+            </button>
           </div>
         </div>
 
@@ -259,7 +268,8 @@ onMounted(loadConsumers)
                 :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
                 :title="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
               >
-                {{ visible.has(secret.id) ? '🙈' : '👁️' }}
+                <EyeOff v-if="visible.has(secret.id)" :size="16" />
+                <Eye v-else :size="16" />
               </button>
               <button
                 class="btn ghost icon"
@@ -267,7 +277,7 @@ onMounted(loadConsumers)
                 aria-label="Copiar"
                 title="Copiar"
               >
-                📋
+                <Copy :size="16" />
               </button>
               <button class="btn ghost" @click="editingSecret = secret">Editar</button>
               <button class="btn ghost danger-text" @click="deletingSecret = secret">Eliminar</button>
@@ -277,7 +287,9 @@ onMounted(loadConsumers)
       </template>
 
       <div v-else class="empty-state welcome">
-        <div class="welcome-icon">🔐</div>
+        <div class="welcome-icon">
+          <ShieldCheck :size="40" />
+        </div>
         <h2>Selecciona un consumer</h2>
         <p class="muted">
           Elige un consumer de la barra lateral para ver y gestionar sus secretos.
