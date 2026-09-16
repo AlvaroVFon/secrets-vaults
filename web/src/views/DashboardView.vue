@@ -17,6 +17,7 @@ import CreateSecretModal from '../components/CreateSecretModal.vue'
 import EditConsumerModal from '../components/EditConsumerModal.vue'
 import EditSecretModal from '../components/EditSecretModal.vue'
 import GenerateConfigModal from '../components/GenerateConfigModal.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const consumers = ref<Consumer[]>([])
 const roles = ref<Role[]>([])
@@ -209,6 +210,7 @@ onMounted(loadConsumers)
 
         <div class="topbar-actions">
           <span class="muted user-label">{{ currentUsername }}</span>
+          <ThemeToggle />
           <button class="btn ghost" @click="onLogout">Salir</button>
         </div>
       </header>

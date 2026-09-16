@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { ApiError, login } from '../api/client'
 import { login as setSession } from '../stores/auth'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const username = ref('')
 const password = ref('')
@@ -40,6 +41,7 @@ async function onSubmit(): Promise<void> {
 
 <template>
   <main class="login">
+    <ThemeToggle />
     <form class="login-card" @submit.prevent="onSubmit">
       <div class="login-brand">
         <div class="login-logo">🔐</div>
