@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Copy, Eye, EyeOff, Plus, ShieldCheck } from '@lucide/vue'
+import { Copy, Eye, EyeOff, Plus, Search, ShieldCheck, X } from '@lucide/vue'
 import {
   ApiError,
   deleteConsumer,
@@ -29,6 +29,7 @@ const loading = ref(false)
 const loadingSecrets = ref(false)
 const error = ref('')
 const visible = ref<Set<string>>(new Set())
+const search = ref('')
 
 const showCreateConsumer = ref(false)
 const editingConsumer = ref<Consumer | null>(null)
@@ -43,6 +44,14 @@ const showConfig = ref(false)
 const roleName = computed(() => {
   const map = new Map(roles.value.map((r) => [r.id, r.name]))
   return (id: string): string => map.get(id) ?? ''
+})
+
+const filteredSecrets = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  if (!q) return secrets.value
+  return secrets.value.filter(
+    (s) => s.key.toLowerCase().includes(q) || s.value.toLowerCase().includes(q),
+  )
 })
 
 function handleError(err: unknown): void {
@@ -81,6 +90,7 @@ async function loadConsumers(): Promise<void> {
 async function select(consumer: Consumer): Promise<void> {
   selected.value = consumer
   secrets.value = []
+  search.value = ''
   error.value = ''
   visible.value = new Set()
   showConfig.value = false
@@ -241,7 +251,8 @@ onMounted(loadConsumers)
       <template v-if="selected">
         <div class="panel-head">
           <p class="muted">
-            {{ secrets.length }} secret{{ secrets.length === 1 ? '' : 's' }}
+            {{ filteredSecrets.length }} secret{{ filteredSecrets.length === 1 ? '' : 's' }}
+            <span v-if="search.trim()"> de {{ secrets.length }}</span>
           </p>
           <div class="row">
             <button class="btn" @click="onToggleActive">
@@ -259,57 +270,84 @@ onMounted(loadConsumers)
 
         <p v-if="loadingSecrets" class="muted">Cargando secrets…</p>
 
-        <div v-else-if="secrets.length === 0" class="empty-state">
-          <p class="muted">Este consumer no tiene secrets todavía.</p>
-        </div>
-
-        <div v-else class="secrets-table">
-          <div class="table-row table-head">
-            <span>Key</span>
-            <span>Value</span>
-            <span>Required</span>
-            <span class="table-actions">Acciones</span>
-          </div>
-          <div v-for="secret in secrets" :key="secret.id" class="table-row">
-            <div class="key-cell">
-              <code class="key">{{ secret.key }}</code>
-              <span class="badge" :class="secret.isSecret ? 'secret' : 'config'">
-                {{ secret.isSecret ? 'secret' : 'config' }}
-              </span>
-            </div>
-            <code class="value">{{ !secret.isSecret || visible.has(secret.id) ? secret.value : '••••••••' }}</code>
-            <label class="required-toggle" :title="secret.required ? 'Requerido' : 'Opcional'">
+        <template v-else>
+          <div v-if="secrets.length > 0" class="secrets-toolbar">
+            <div class="search-field">
+              <Search :size="16" class="search-icon" />
               <input
-                type="checkbox"
-                :checked="secret.required"
-                :disabled="togglingRequired === secret.id"
-                @change="onToggleRequired(secret)"
+                v-model="search"
+                type="search"
+                placeholder="Buscar secret por key o valor…"
+                aria-label="Buscar secrets"
               />
-            </label>
-            <div class="table-actions row">
               <button
-                v-if="secret.isSecret"
-                class="btn ghost icon"
-                @click="toggleVisible(secret.id)"
-                :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
-                :title="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+                v-if="search"
+                type="button"
+                class="btn ghost icon search-clear"
+                @click="search = ''"
+                aria-label="Limpiar búsqueda"
               >
-                <EyeOff v-if="visible.has(secret.id)" :size="16" />
-                <Eye v-else :size="16" />
+                <X :size="16" />
               </button>
-              <button
-                class="btn ghost icon"
-                @click="copy(secret.value)"
-                aria-label="Copiar"
-                title="Copiar"
-              >
-                <Copy :size="16" />
-              </button>
-              <button class="btn ghost" @click="editingSecret = secret">Editar</button>
-              <button class="btn ghost danger-text" @click="deletingSecret = secret">Eliminar</button>
             </div>
           </div>
-        </div>
+
+          <div v-if="secrets.length === 0" class="empty-state">
+            <p class="muted">Este consumer no tiene secrets todavía.</p>
+          </div>
+
+          <div v-else-if="filteredSecrets.length === 0" class="empty-state">
+            <p class="muted">No hay secrets que coincidan con «{{ search.trim() }}».</p>
+          </div>
+
+          <div v-else class="secrets-table">
+            <div class="table-row table-head">
+              <span>Key</span>
+              <span>Value</span>
+              <span>Required</span>
+              <span class="table-actions">Acciones</span>
+            </div>
+            <div v-for="secret in filteredSecrets" :key="secret.id" class="table-row">
+              <div class="key-cell">
+                <code class="key">{{ secret.key }}</code>
+                <span class="badge" :class="secret.isSecret ? 'secret' : 'config'">
+                  {{ secret.isSecret ? 'secret' : 'config' }}
+                </span>
+              </div>
+              <code class="value">{{ !secret.isSecret || visible.has(secret.id) ? secret.value : '••••••••' }}</code>
+              <label class="required-toggle" :title="secret.required ? 'Requerido' : 'Opcional'">
+                <input
+                  type="checkbox"
+                  :checked="secret.required"
+                  :disabled="togglingRequired === secret.id"
+                  @change="onToggleRequired(secret)"
+                />
+              </label>
+              <div class="table-actions row">
+                <button
+                  v-if="secret.isSecret"
+                  class="btn ghost icon"
+                  @click="toggleVisible(secret.id)"
+                  :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+                  :title="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+                >
+                  <EyeOff v-if="visible.has(secret.id)" :size="16" />
+                  <Eye v-else :size="16" />
+                </button>
+                <button
+                  class="btn ghost icon"
+                  @click="copy(secret.value)"
+                  aria-label="Copiar"
+                  title="Copiar"
+                >
+                  <Copy :size="16" />
+                </button>
+                <button class="btn ghost" @click="editingSecret = secret">Editar</button>
+                <button class="btn ghost danger-text" @click="deletingSecret = secret">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        </template>
       </template>
 
       <div v-else class="empty-state welcome">

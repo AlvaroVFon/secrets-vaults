@@ -8,10 +8,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrNotFound = errors.New("not found")
+
+const uniqueViolationCode = "23505"
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode
+}
 
 type SecretsRepository struct {
 	store *pgxpool.Pool
@@ -26,6 +34,9 @@ func NewSecretsRepository(store *pgxpool.Pool) *SecretsRepository {
 func (r *SecretsRepository) Create(ctx context.Context, secret Secret) error {
 	query := "INSERT INTO secrets (id, key, value, consumer_id, is_secret, required) VALUES ($1, $2, $3, $4, $5, $6)"
 	if _, err := r.store.Exec(ctx, query, secret.ID, secret.Key, secret.Value, secret.ConsumerID, secret.IsSecret, secret.Required); err != nil {
+		if isUniqueViolation(err) {
+			return fmt.Errorf("%w: %q", ErrDuplicatedKey, secret.Key)
+		}
 		return err
 	}
 	return nil
@@ -200,6 +211,13 @@ func (r *SecretsRepository) Update(ctx context.Context, req UpdateSecretRequest)
 
 	tag, err := r.store.Exec(ctx, query, args...)
 	if err != nil {
+		if isUniqueViolation(err) {
+			identifier := req.ID
+			if req.Key != nil {
+				identifier = *req.Key
+			}
+			return fmt.Errorf("%w: %q", ErrDuplicatedKey, identifier)
+		}
 		return err
 	}
 	if tag.RowsAffected() == 0 {

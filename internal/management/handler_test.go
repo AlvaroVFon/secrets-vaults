@@ -572,6 +572,37 @@ func TestManagement_CreateSecret_Success(t *testing.T) {
 	}
 }
 
+func TestManagement_CreateSecret_DuplicatedKey(t *testing.T) {
+	token := testToken(t)
+	target := testConsumer()
+
+	router := setupManagementRouter(
+		&mockConsumersService{
+			findByIDFunc: func(_ context.Context, _ string) (*consumers.Consumer, error) {
+				return target, nil
+			},
+		},
+		&mockRolesService{},
+		&mockSecretsService{
+			createFunc: func(_ context.Context, _ secrets.CreateSecretRequest) (*secrets.Secret, error) {
+				return nil, secrets.ErrDuplicatedKey
+			},
+		},
+	)
+
+	body := `{"key":"db.password","value":"s3cret","consumerId":"` + target.ID + `"}`
+	rec := doRequest(t, router, http.MethodPost, "/management/secrets", body, token)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, rec.Code)
+	}
+
+	res := decodeResponse(t, rec)
+	if res.Message != "Secret key already exists" {
+		t.Errorf("expected message %q, got %q", "Secret key already exists", res.Message)
+	}
+}
+
 func TestManagement_FindAllConsumers_Success(t *testing.T) {
 	token := testToken(t)
 
@@ -972,6 +1003,31 @@ func TestManagement_UpdateSecret_NotFound(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected status %d, got %d", http.StatusNotFound, rec.Code)
+	}
+}
+
+func TestManagement_UpdateSecret_DuplicatedKey(t *testing.T) {
+	token := testToken(t)
+
+	router := setupManagementRouter(
+		&mockConsumersService{},
+		&mockRolesService{},
+		&mockSecretsService{
+			updateFunc: func(_ context.Context, _ secrets.UpdateSecretRequest) (*secrets.Secret, error) {
+				return nil, secrets.ErrDuplicatedKey
+			},
+		},
+	)
+
+	rec := doRequest(t, router, http.MethodPut, "/management/secrets/"+uuid.New().String(), `{"key":"db.password"}`, token)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, rec.Code)
+	}
+
+	res := decodeResponse(t, rec)
+	if res.Message != "Secret key already exists" {
+		t.Errorf("expected message %q, got %q", "Secret key already exists", res.Message)
 	}
 }
 
