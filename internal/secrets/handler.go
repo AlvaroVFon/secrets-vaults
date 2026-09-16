@@ -71,6 +71,10 @@ func (h *SecretsHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	secret, err := h.secretsService.Create(ctx, secretRequest)
 	if err != nil {
+		if errors.Is(err, ErrDuplicatedKey) {
+			httpx.WriteResponse(w, http.StatusConflict, httpx.Response{Status: http.StatusConflict, Message: "Secret key already exists"})
+			return
+		}
 		httpx.WriteResponse(w, http.StatusInternalServerError, httpx.Response{Status: http.StatusInternalServerError, Message: ErrInternalServerError.Error()})
 		return
 	}

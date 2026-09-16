@@ -11,6 +11,7 @@ import (
 var (
 	ErrEmptyArgument = errors.New("invalid empty argument")
 	ErrInvalidUUID   = errors.New("invalid UUID provided")
+	ErrDuplicatedKey = errors.New("secret key already exists")
 )
 
 type Secret struct {

@@ -58,6 +58,31 @@ func createConsumerForSecret(t *testing.T, repo *SecretsRepository) string {
 	return consumer.ID
 }
 
+func createSecondConsumerForSecret(t *testing.T, repo *SecretsRepository) string {
+	t.Helper()
+	ctx := context.Background()
+
+	roleRepo := roles.NewRoleRepository(repo.store)
+	role, err := roles.NewRole("superadmin")
+	if err != nil {
+		t.Fatalf("new role: %v", err)
+	}
+	if err := roleRepo.Create(ctx, *role); err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+
+	consumerRepo := consumers.NewConsumersRepository(repo.store)
+	consumer, err := consumers.NewConsumer("second-consumer", "second-api-key", role.ID)
+	if err != nil {
+		t.Fatalf("new consumer: %v", err)
+	}
+	if err := consumerRepo.Create(ctx, *consumer); err != nil {
+		t.Fatalf("create consumer: %v", err)
+	}
+
+	return consumer.ID
+}
+
 func TestSecretsRepository_CreateAndFindAllByConsumerID(t *testing.T) {
 	repo := setupSecretsRepo(t)
 	ctx := context.Background()
@@ -299,5 +324,58 @@ func TestSecretsRepository_UpdateIsSecret(t *testing.T) {
 	}
 	if !got.IsSecret {
 		t.Error("expected IsSecret to be true after update")
+	}
+}
+
+func TestSecretsRepository_Create_DuplicatedKey(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	consumerID := createConsumerForSecret(t, repo)
+
+	first, err := NewSecret("db.password", "s3cret", consumerID, true)
+	if err != nil {
+		t.Fatalf("new secret: %v", err)
+	}
+	if err := repo.Create(ctx, *first); err != nil {
+		t.Fatalf("create first secret: %v", err)
+	}
+
+	otherConsumerID := createSecondConsumerForSecret(t, repo)
+
+	dup, err := NewSecret("db.password", "other", otherConsumerID, true)
+	if err != nil {
+		t.Fatalf("new secret: %v", err)
+	}
+	if err := repo.Create(ctx, *dup); !errors.Is(err, ErrDuplicatedKey) {
+		t.Fatalf("expected ErrDuplicatedKey, got %v", err)
+	}
+}
+
+func TestSecretsRepository_Update_DuplicatedKey(t *testing.T) {
+	repo := setupSecretsRepo(t)
+	ctx := context.Background()
+
+	consumerID := createConsumerForSecret(t, repo)
+
+	first, err := NewSecret("db.password", "s3cret", consumerID, true)
+	if err != nil {
+		t.Fatalf("new secret: %v", err)
+	}
+	if err := repo.Create(ctx, *first); err != nil {
+		t.Fatalf("create first secret: %v", err)
+	}
+
+	second, err := NewSecret("db.host", "localhost", consumerID, true)
+	if err != nil {
+		t.Fatalf("new secret: %v", err)
+	}
+	if err := repo.Create(ctx, *second); err != nil {
+		t.Fatalf("create second secret: %v", err)
+	}
+
+	duplicated := "db.password"
+	if err := repo.Update(ctx, UpdateSecretRequest{ID: second.ID, Key: &duplicated}); !errors.Is(err, ErrDuplicatedKey) {
+		t.Fatalf("expected ErrDuplicatedKey, got %v", err)
 	}
 }
