@@ -11,6 +11,7 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
 const key = ref('')
 const value = ref('')
 const isSecret = ref(false)
+const required = ref(false)
 const error = ref('')
 const loading = ref(false)
 
@@ -22,7 +23,7 @@ async function onSave(): Promise<void> {
   }
   loading.value = true
   try {
-    await createSecret(storedToken.value, props.consumer.id, key.value.trim(), value.value, isSecret.value)
+    await createSecret(storedToken.value, props.consumer.id, key.value.trim(), value.value, isSecret.value, required.value)
     emit('created')
   } catch (err) {
     if (err instanceof ApiError) {
@@ -57,6 +58,10 @@ async function onSave(): Promise<void> {
       <label class="checkbox-field">
         <input v-model="isSecret" type="checkbox" />
         <span>Es un secret (valor sensible)</span>
+      </label>
+      <label class="checkbox-field">
+        <input v-model="required" type="checkbox" />
+        <span>Required (obligatorio)</span>
       </label>
       <p v-if="error" class="error">{{ error }}</p>
       <div class="row end">

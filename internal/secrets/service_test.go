@@ -155,6 +155,62 @@ func TestSecretsService_Create_ExplicitSecret(t *testing.T) {
 	}
 }
 
+func TestSecretsService_Create_RequiredDefaultsToFalse(t *testing.T) {
+	consumerID := uuid.New().String()
+
+	var got Secret
+	service := NewSecretsService(&mockRepository{
+		createFunc: func(_ context.Context, secret Secret) error {
+			got = secret
+			return nil
+		},
+	})
+
+	secret, err := service.Create(context.Background(), CreateSecretRequest{
+		Key:        "db.password",
+		Value:      "s3cret",
+		ConsumerID: consumerID,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if secret.Required {
+		t.Error("expected Required to default to false")
+	}
+	if got.Required {
+		t.Error("expected repository to receive Required false")
+	}
+}
+
+func TestSecretsService_Create_Required(t *testing.T) {
+	consumerID := uuid.New().String()
+	required := true
+
+	var got Secret
+	service := NewSecretsService(&mockRepository{
+		createFunc: func(_ context.Context, secret Secret) error {
+			got = secret
+			return nil
+		},
+	})
+
+	secret, err := service.Create(context.Background(), CreateSecretRequest{
+		Key:        "db.password",
+		Value:      "s3cret",
+		ConsumerID: consumerID,
+		Required:   &required,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if !secret.Required {
+		t.Error("expected Required to be true")
+	}
+	if !got.Required {
+		t.Error("expected repository to receive Required true")
+	}
+}
+
 func TestSecretsService_Create_EmptyKey(t *testing.T) {
 	service := NewSecretsService(&mockRepository{})
 

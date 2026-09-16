@@ -11,7 +11,7 @@ import (
 func TestNewSecret(t *testing.T) {
 	consumerID := uuid.New().String()
 
-	secret, err := NewSecret("db.password", "s3cret", consumerID, true)
+	secret, err := NewSecret("db.password", "s3cret", consumerID, true, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -34,10 +34,13 @@ func TestNewSecret(t *testing.T) {
 	if !secret.IsSecret {
 		t.Error("expected IsSecret to be true")
 	}
+	if !secret.Required {
+		t.Error("expected Required to be true")
+	}
 }
 
 func TestNewSecret_NotASecret(t *testing.T) {
-	secret, err := NewSecret("log.level", "debug", uuid.New().String(), false)
+	secret, err := NewSecret("log.level", "debug", uuid.New().String(), false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -47,28 +50,28 @@ func TestNewSecret_NotASecret(t *testing.T) {
 }
 
 func TestNewSecret_EmptyKey(t *testing.T) {
-	_, err := NewSecret("", "s3cret", uuid.New().String(), true)
+	_, err := NewSecret("", "s3cret", uuid.New().String(), true, false)
 	if !errors.Is(err, ErrEmptyArgument) {
 		t.Fatalf("expected ErrEmptyArgument, got %v", err)
 	}
 }
 
 func TestNewSecret_EmptyValue(t *testing.T) {
-	_, err := NewSecret("db.password", "", uuid.New().String(), true)
+	_, err := NewSecret("db.password", "", uuid.New().String(), true, false)
 	if !errors.Is(err, ErrEmptyArgument) {
 		t.Fatalf("expected ErrEmptyArgument, got %v", err)
 	}
 }
 
 func TestNewSecret_EmptyConsumerID(t *testing.T) {
-	_, err := NewSecret("db.password", "s3cret", "", true)
+	_, err := NewSecret("db.password", "s3cret", "", true, false)
 	if !errors.Is(err, ErrEmptyArgument) {
 		t.Fatalf("expected ErrEmptyArgument, got %v", err)
 	}
 }
 
 func TestNewSecret_InvalidConsumerID(t *testing.T) {
-	_, err := NewSecret("db.password", "s3cret", "not-a-uuid", true)
+	_, err := NewSecret("db.password", "s3cret", "not-a-uuid", true, false)
 	if !errors.Is(err, ErrInvalidUUID) {
 		t.Fatalf("expected ErrInvalidUUID, got %v", err)
 	}

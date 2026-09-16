@@ -9,6 +9,7 @@ import {
   fetchRoles,
   fetchSecrets,
   updateConsumer,
+  updateSecret,
 } from '../api/client'
 import { currentUsername, logout, storedToken } from '../stores/auth'
 import type { Consumer, Role, Secret } from '../types'
@@ -36,6 +37,7 @@ const deletingConsumer = ref<Consumer | null>(null)
 const showCreateSecret = ref(false)
 const editingSecret = ref<Secret | null>(null)
 const deletingSecret = ref<Secret | null>(null)
+const togglingRequired = ref<string | null>(null)
 const showConfig = ref(false)
 
 const roleName = computed(() => {
@@ -138,6 +140,21 @@ async function onDeleteConsumer(): Promise<void> {
   } catch (err) {
     deletingConsumer.value = null
     handleError(err)
+  }
+}
+
+async function onToggleRequired(secret: Secret): Promise<void> {
+  togglingRequired.value = secret.id
+  try {
+    const updated = await updateSecret(storedToken.value, secret.id, { required: !secret.required })
+    const index = secrets.value.findIndex((s) => s.id === secret.id)
+    if (index !== -1) {
+      secrets.value[index] = updated
+    }
+  } catch (err) {
+    handleError(err)
+  } finally {
+    togglingRequired.value = null
   }
 }
 
@@ -250,6 +267,7 @@ onMounted(loadConsumers)
           <div class="table-row table-head">
             <span>Key</span>
             <span>Value</span>
+            <span>Required</span>
             <span class="table-actions">Acciones</span>
           </div>
           <div v-for="secret in secrets" :key="secret.id" class="table-row">
@@ -260,6 +278,14 @@ onMounted(loadConsumers)
               </span>
             </div>
             <code class="value">{{ !secret.isSecret || visible.has(secret.id) ? secret.value : '••••••••' }}</code>
+            <label class="required-toggle" :title="secret.required ? 'Requerido' : 'Opcional'">
+              <input
+                type="checkbox"
+                :checked="secret.required"
+                :disabled="togglingRequired === secret.id"
+                @change="onToggleRequired(secret)"
+              />
+            </label>
             <div class="table-actions row">
               <button
                 v-if="secret.isSecret"

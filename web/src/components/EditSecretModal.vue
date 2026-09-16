@@ -12,6 +12,7 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'updated'): void }>()
 const key = ref(props.secret.key)
 const value = ref(props.secret.value)
 const isSecret = ref(props.secret.isSecret)
+const required = ref(props.secret.required)
 const showValue = ref(false)
 const error = ref('')
 const loading = ref(false)
@@ -28,6 +29,7 @@ async function onSave(): Promise<void> {
       key: key.value.trim(),
       value: value.value,
       isSecret: isSecret.value,
+      required: required.value,
     })
     emit('updated')
   } catch (err) {
@@ -73,6 +75,10 @@ async function onSave(): Promise<void> {
       <label class="checkbox-field">
         <input v-model="isSecret" type="checkbox" />
         <span>Es un secret (valor sensible)</span>
+      </label>
+      <label class="checkbox-field">
+        <input v-model="required" type="checkbox" />
+        <span>Required (obligatorio)</span>
       </label>
       <p v-if="error" class="error">{{ error }}</p>
       <div class="row end">

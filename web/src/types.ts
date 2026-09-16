@@ -4,6 +4,7 @@ export interface Secret {
   value: string;
   consumerId: string;
   isSecret: boolean;
+  required: boolean;
 }
 
 export interface Consumer {
