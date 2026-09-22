@@ -1,13 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Eye, EyeOff, Wand2 } from '@lucide/vue'
-import { ApiError, createConsumer } from '../api/client'
-import { logout, storedToken } from '../stores/auth'
-import type { Role } from '../types'
-import { generateApikey } from '../utils/apikey'
-import ModalBase from './ModalBase.vue'
+import { ApiError, createConsumer } from '@/api/client'
+import { logout, storedToken } from '@/stores/auth'
+import type { Role } from '@/types'
+import { generateApikey } from '@/utils/apikey'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
-const props = defineProps<{ roles: Role[] }>()
+defineProps<{ roles: Role[] }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
 
 const name = ref('')
@@ -61,51 +78,67 @@ async function onSave(): Promise<void> {
 </script>
 
 <template>
-  <ModalBase title="Nuevo consumer" @close="emit('close')">
-    <form @submit.prevent="onSave">
-      <label class="field">
-        <span>Nombre</span>
-        <input v-model="name" placeholder="mi-app" autocomplete="off" />
-      </label>
-      <label class="field">
-        <span>Apikey</span>
-        <div class="input-row">
-          <input
-            v-model="apikey"
-            :type="showApikey ? 'text' : 'password'"
-            placeholder="clave-secreta"
-            autocomplete="off"
-          />
-          <button
-            type="button"
-            class="btn ghost icon"
-            @click="showApikey = !showApikey"
-            :aria-label="showApikey ? 'Ocultar' : 'Mostrar'"
-            :title="showApikey ? 'Ocultar' : 'Mostrar'"
-          >
-            <EyeOff v-if="showApikey" :size="16" />
-            <Eye v-else :size="16" />
-          </button>
-          <button type="button" class="btn" @click="onGenerate">
-            <Wand2 :size="16" />
-            Generar
-          </button>
+  <Dialog :open="true" @update:open="(v) => !v && emit('close')">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Nuevo consumer</DialogTitle>
+        <DialogDescription>Crea un consumer con su apikey y rol.</DialogDescription>
+      </DialogHeader>
+
+      <form class="grid gap-4" @submit.prevent="onSave">
+        <div class="grid gap-2">
+          <Label for="consumer-name">Nombre</Label>
+          <Input id="consumer-name" v-model="name" placeholder="mi-app" autocomplete="off" />
         </div>
-      </label>
-      <label class="field">
-        <span>Rol</span>
-        <select v-model="roleId">
-          <option value="" disabled>— Seleccionar rol —</option>
-          <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
-        </select>
-      </label>
-      <p v-if="error" class="error">{{ error }}</p>
-      <div class="row end">
-        <button type="button" class="btn" @click="emit('close')">Cancelar</button>
-        <button type="submit" class="btn primary" :disabled="loading">
-          {{ loading ? 'Guardando…' : 'Crear consumer' }}
-        </button>
-      </div>
-    </form>
-  </ModalBase>
+
+        <div class="grid gap-2">
+          <Label for="consumer-apikey">Apikey</Label>
+          <div class="flex gap-2">
+            <Input
+              id="consumer-apikey"
+              v-model="apikey"
+              :type="showApikey ? 'text' : 'password'"
+              placeholder="clave-secreta"
+              autocomplete="off"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              @click="showApikey = !showApikey"
+              :aria-label="showApikey ? 'Ocultar' : 'Mostrar'"
+            >
+              <EyeOff v-if="showApikey" />
+              <Eye v-else />
+            </Button>
+            <Button type="button" variant="outline" @click="onGenerate">
+              <Wand2 />
+              Generar
+            </Button>
+          </div>
+        </div>
+
+        <div class="grid gap-2">
+          <Label>Rol</Label>
+          <Select v-model="roleId">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="Seleccionar rol" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="emit('close')">Cancelar</Button>
+          <Button type="submit" :disabled="loading">
+            {{ loading ? 'Guardando…' : 'Crear consumer' }}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
 </template>

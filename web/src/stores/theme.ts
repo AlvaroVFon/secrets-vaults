@@ -20,6 +20,7 @@ export const currentTheme = computed(() => theme.value);
 export function applyTheme(value: Theme): void {
   theme.value = value;
   document.documentElement.dataset.theme = value;
+  document.documentElement.classList.toggle('dark', value === 'dark');
   localStorage.setItem(STORAGE_KEY, value);
 }
 

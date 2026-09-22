@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ShieldCheck } from '@lucide/vue'
-import { ApiError, login } from '../api/client'
-import { login as setSession } from '../stores/auth'
-import ThemeToggle from '../components/ThemeToggle.vue'
+import { ApiError, login } from '@/api/client'
+import { login as setSession } from '@/stores/auth'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const username = ref('')
 const password = ref('')
@@ -41,35 +45,45 @@ async function onSubmit(): Promise<void> {
 </script>
 
 <template>
-  <main class="login">
-    <ThemeToggle />
-    <form class="login-card" @submit.prevent="onSubmit">
-      <div class="login-brand">
-        <div class="login-logo">
-          <ShieldCheck :size="44" />
+  <main class="relative flex min-h-svh items-center justify-center bg-background p-4">
+    <div
+      class="pointer-events-none absolute inset-x-0 top-0 h-[500px] bg-[radial-gradient(1100px_420px_at_50%_-20%,var(--primary),transparent_70%)] opacity-15"
+    ></div>
+    <div class="absolute top-4 right-4">
+      <ThemeToggle />
+    </div>
+
+    <Card class="relative w-full max-w-sm">
+      <CardHeader class="justify-items-center gap-2 text-center">
+        <div class="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <ShieldCheck class="size-6" />
         </div>
-        <h1>Secrets Vault</h1>
-        <p class="muted">Panel de gestión</p>
-      </div>
+        <CardTitle class="text-xl">Secrets Vault</CardTitle>
+        <CardDescription>Panel de gestión</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form class="grid gap-4" @submit.prevent="onSubmit">
+          <div class="grid gap-2">
+            <Label for="username">Usuario</Label>
+            <Input id="username" v-model="username" autocomplete="username" placeholder="admin" />
+          </div>
+          <div class="grid gap-2">
+            <Label for="password">Contraseña</Label>
+            <Input
+              id="password"
+              v-model="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="••••••••"
+            />
+          </div>
 
-      <label class="field">
-        <span>Usuario</span>
-        <input v-model="username" autocomplete="username" placeholder="admin" />
-      </label>
-      <label class="field">
-        <span>Contraseña</span>
-        <input
-          v-model="password"
-          type="password"
-          autocomplete="current-password"
-          placeholder="••••••••"
-        />
-      </label>
-
-      <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" class="btn primary" :disabled="loading">
-        {{ loading ? 'Entrando…' : 'Entrar' }}
-      </button>
-    </form>
+          <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
+          <Button type="submit" class="w-full" :disabled="loading">
+            {{ loading ? 'Entrando…' : 'Entrar' }}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   </main>
 </template>

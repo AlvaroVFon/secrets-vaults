@@ -1,6 +1,7 @@
 # Secrets Vault — web
 
-Panel de gestión de secrets. Vue 3 + TypeScript + Vite.
+Panel de gestión de secrets. Vue 3 + TypeScript + Vite, con **Tailwind CSS v4**
+y **shadcn-vue** (Reka UI) para los componentes.
 
 ## Desarrollo
 
@@ -13,10 +14,34 @@ La API debe estar levantada en `http://localhost:8080`.
 
 ## Login
 
-El login pide la **apikey** de un consumer con rol `superadmin`. El seed
-(`migrations/000005_seed_roles_and_superadmin.up.sql`) crea uno de prueba:
+El login pide **usuario y contraseña** del panel (`ADMIN_USERNAME` /
+`ADMIN_PASSWORD`, ver README raíz). El usuario se crea en el primer arranque de
+la API si la tabla de usuarios está vacía.
 
-- apikey: `superadmin-api-key`
+## Componentes UI
+
+Los componentes de shadcn-vue se copian al repo en `src/components/ui/` y se
+importan con el alias `@/`:
+
+```vue
+<script setup lang="ts">
+import { Button } from '@/components/ui/button'
+</script>
+```
+
+Para añadir más componentes:
+
+```bash
+npx shadcn-vue@latest add <componente>
+```
+
+La configuración (aliases, color base, ruta del CSS) está en `components.json`.
+
+## Tema
+
+Modo claro/oscuro mediante la clase `.dark` en `<html>`, gestionada en
+`src/stores/theme.ts` y persistida en `localStorage`. Los tokens de color
+(OKLCH) viven en `src/style.css`.
 
 ## Producción
 
