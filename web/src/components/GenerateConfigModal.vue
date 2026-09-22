@@ -4,10 +4,18 @@ import { Check, Copy } from '@lucide/vue'
 import hljs from 'highlight.js/lib/core'
 import go from 'highlight.js/lib/languages/go'
 import typescript from 'highlight.js/lib/languages/typescript'
-import { ApiError, fetchConsumerConfig } from '../api/client'
-import { logout, storedToken } from '../stores/auth'
-import type { ConfigLanguage, Consumer } from '../types'
-import ModalBase from './ModalBase.vue'
+import { ApiError, fetchConsumerConfig } from '@/api/client'
+import { logout, storedToken } from '@/stores/auth'
+import type { ConfigLanguage, Consumer } from '@/types'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 hljs.registerLanguage('typescript', typescript)
 hljs.registerLanguage('go', go)
@@ -71,39 +79,37 @@ onMounted(load)
 </script>
 
 <template>
-  <ModalBase class="config-modal" :title="`Config de ${consumer.name}`" @close="emit('close')">
-    <div class="config-toolbar">
-      <div class="segmented" role="tablist" aria-label="Lenguaje">
-        <button
-          type="button"
-          class="segmented-item"
-          :class="{ active: language === 'ts' }"
-          @click="language = 'ts'"
-        >
-          TypeScript
-        </button>
-        <button
-          type="button"
-          class="segmented-item"
-          :class="{ active: language === 'go' }"
-          @click="language = 'go'"
-        >
-          Go
-        </button>
+  <Dialog :open="true" @update:open="(v) => !v && emit('close')">
+    <DialogContent class="sm:max-w-3xl">
+      <DialogHeader>
+        <DialogTitle>Config de {{ consumer.name }}</DialogTitle>
+        <DialogDescription>Genera el fichero de configuración desde sus secrets.</DialogDescription>
+      </DialogHeader>
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <Tabs v-model="language">
+          <TabsList>
+            <TabsTrigger value="ts">TypeScript</TabsTrigger>
+            <TabsTrigger value="go">Go</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div class="flex items-center gap-3">
+          <span v-if="filename" class="font-mono text-xs text-muted-foreground">{{ filename }}</span>
+          <Button variant="outline" :disabled="!code || loading" @click="copy">
+            <Check v-if="copied" />
+            <Copy v-else />
+            {{ copied ? 'Copiado' : 'Copiar' }}
+          </Button>
+        </div>
       </div>
 
-      <div class="row">
-        <span v-if="filename" class="muted filename">{{ filename }}</span>
-        <button type="button" class="btn" :disabled="!code || loading" @click="copy">
-          <Check v-if="copied" :size="16" />
-          <Copy v-else :size="16" />
-          {{ copied ? 'Copiado' : 'Copiar' }}
-        </button>
-      </div>
-    </div>
-
-    <p v-if="loading" class="muted">Generando…</p>
-    <p v-else-if="error" class="error">{{ error }}</p>
-    <pre v-else class="config-preview"><code class="hljs" v-html="highlighted"></code></pre>
-  </ModalBase>
+      <p v-if="loading" class="py-6 text-center text-sm text-muted-foreground">Generando…</p>
+      <p v-else-if="error" class="text-sm text-destructive">{{ error }}</p>
+      <pre
+        v-else
+        class="config-preview max-h-[60vh] overflow-auto rounded-md border bg-muted/30 p-4"
+      ><code class="hljs text-xs" v-html="highlighted"></code></pre>
+    </DialogContent>
+  </Dialog>
 </template>

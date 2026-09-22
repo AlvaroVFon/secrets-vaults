@@ -11,7 +11,9 @@
         if (theme !== 'light' && theme !== 'dark') {
           theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
         }
-        document.documentElement.dataset.theme = theme
+        var root = document.documentElement
+        root.dataset.theme = theme
+        root.classList.toggle('dark', theme === 'dark')
       })()
     </script>
   </head>

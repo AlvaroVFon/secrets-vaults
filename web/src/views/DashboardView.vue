@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { Copy, Eye, EyeOff, Plus, Search, ShieldCheck, X } from '@lucide/vue'
+import { Braces, Copy, Eye, EyeOff, LogOut, Pencil, Plus, Search, ShieldCheck, Trash2, User, X } from '@lucide/vue'
+import { toast } from 'vue-sonner'
 import {
   ApiError,
   deleteConsumer,
@@ -9,16 +10,34 @@ import {
   fetchRoles,
   fetchSecrets,
   updateConsumer,
-} from '../api/client'
-import { currentUsername, logout, storedToken } from '../stores/auth'
-import type { Consumer, Role, Secret } from '../types'
-import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
-import CreateConsumerModal from '../components/CreateConsumerModal.vue'
-import CreateSecretModal from '../components/CreateSecretModal.vue'
-import EditConsumerModal from '../components/EditConsumerModal.vue'
-import EditSecretModal from '../components/EditSecretModal.vue'
-import GenerateConfigModal from '../components/GenerateConfigModal.vue'
-import ThemeToggle from '../components/ThemeToggle.vue'
+} from '@/api/client'
+import { currentUsername, logout, storedToken } from '@/stores/auth'
+import type { Consumer, Role, Secret } from '@/types'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue'
+import CreateConsumerModal from '@/components/CreateConsumerModal.vue'
+import CreateSecretModal from '@/components/CreateSecretModal.vue'
+import EditConsumerModal from '@/components/EditConsumerModal.vue'
+import EditSecretModal from '@/components/EditSecretModal.vue'
+import GenerateConfigModal from '@/components/GenerateConfigModal.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const consumers = ref<Consumer[]>([])
 const roles = ref<Role[]>([])
@@ -119,6 +138,7 @@ function toggleVisible(id: string): void {
 async function copy(value: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(value)
+    toast.success('Copiado al portapapeles')
   } catch {
     error.value = 'No se pudo copiar al portapapeles'
   }
@@ -144,6 +164,7 @@ async function onDeleteConsumer(): Promise<void> {
       selected.value = null
       secrets.value = []
     }
+    toast.success('Consumer eliminado')
     await loadConsumers()
   } catch (err) {
     deletingConsumer.value = null
@@ -156,6 +177,7 @@ async function onDeleteSecret(): Promise<void> {
   try {
     await deleteSecret(storedToken.value, deletingSecret.value.id)
     deletingSecret.value = null
+    toast.success('Secret eliminado')
     await loadSecrets(selected.value?.id ?? '')
   } catch (err) {
     deletingSecret.value = null
@@ -175,163 +197,249 @@ onMounted(loadConsumers)
 </script>
 
 <template>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="brand-logo">
-          <ShieldCheck :size="20" />
-        </span>
+  <div class="flex h-svh w-full overflow-hidden bg-background">
+    <aside class="flex w-64 min-w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
+      <div class="flex h-14 items-center gap-2 border-b px-4 text-base font-semibold">
+        <ShieldCheck class="size-5 text-primary" />
         <span>Secrets Vault</span>
       </div>
 
-      <div class="sidebar-scroll">
-        <p class="nav-label">Consumers</p>
-        <ul class="nav-list">
+      <div class="flex-1 overflow-y-auto p-3">
+        <p class="px-2 pb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          Consumers
+        </p>
+        <ul class="flex flex-col gap-1">
           <li v-for="c in consumers" :key="c.id">
             <button
-              class="nav-item"
-              :class="{ active: selected?.id === c.id }"
+              type="button"
+              class="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-sidebar-accent"
+              :class="{ 'bg-sidebar-accent': selected?.id === c.id }"
               @click="select(c)"
               :title="c.id"
             >
-              <span class="dot" :class="c.active ? 'on' : 'off'"></span>
-              <span class="nav-name">{{ c.name }}</span>
-              <span v-if="roleName(c.roleId)" class="nav-role">{{ roleName(c.roleId) }}</span>
+              <span
+                class="size-2 shrink-0 rounded-full"
+                :class="c.active ? 'bg-emerald-500' : 'bg-muted-foreground/40'"
+              ></span>
+              <span class="flex-1 truncate font-medium">{{ c.name }}</span>
+              <Badge v-if="roleName(c.roleId)" variant="secondary" class="text-[10px]">
+                {{ roleName(c.roleId) }}
+              </Badge>
             </button>
           </li>
         </ul>
-        <p v-if="!loading && consumers.length === 0" class="muted empty-sidebar">
+        <p
+          v-if="!loading && consumers.length === 0"
+          class="px-2 py-4 text-sm text-muted-foreground"
+        >
           Sin consumers todavía.
         </p>
       </div>
 
-      <button class="btn primary sidebar-add" @click="showCreateConsumer = true">
-        <Plus :size="16" />
-        Nuevo consumer
-      </button>
+      <div class="border-t p-3">
+        <Button class="w-full" @click="showCreateConsumer = true">
+          <Plus />
+          Nuevo consumer
+        </Button>
+      </div>
     </aside>
 
-    <main class="content">
-      <header class="topbar">
-        <div v-if="selected" class="topbar-info">
-          <h1>{{ selected.name }}</h1>
-          <span class="badge" :class="selected.active ? 'on' : 'off'">
+    <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <header class="flex h-14 shrink-0 items-center justify-between gap-4 border-b px-6">
+        <div v-if="selected" class="flex min-w-0 items-center gap-2">
+          <h1 class="truncate text-base font-semibold">{{ selected.name }}</h1>
+          <Badge :variant="selected.active ? 'default' : 'secondary'">
             {{ selected.active ? 'Activo' : 'Inactivo' }}
-          </span>
-          <span class="badge">{{ roleName(selected.roleId) }}</span>
+          </Badge>
+          <Badge v-if="roleName(selected.roleId)" variant="outline">
+            {{ roleName(selected.roleId) }}
+          </Badge>
         </div>
-        <h1 v-else>Panel de gestión</h1>
+        <h1 v-else class="text-base font-semibold">Panel de gestión</h1>
 
-        <div class="topbar-actions">
-          <span class="muted user-label">{{ currentUsername }}</span>
+        <div class="flex items-center gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost" size="sm">
+                <User />
+                <span class="hidden sm:inline">{{ currentUsername }}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem variant="destructive" @select="onLogout">
+                <LogOut />
+                Salir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <ThemeToggle />
-          <button class="btn ghost" @click="onLogout">Salir</button>
         </div>
       </header>
 
-      <p v-if="error" class="error">{{ error }}</p>
-
-      <template v-if="selected">
-        <div class="panel-head">
-          <p class="muted">
-            {{ filteredSecrets.length }} secret{{ filteredSecrets.length === 1 ? '' : 's' }}
-            <span v-if="search.trim()"> de {{ secrets.length }}</span>
-          </p>
-          <div class="row">
-            <button class="btn" @click="onToggleActive">
-              {{ selected.active ? 'Desactivar' : 'Activar' }}
-            </button>
-            <button class="btn" @click="editingConsumer = selected">Editar consumer</button>
-            <button class="btn danger" @click="deletingConsumer = selected">Eliminar</button>
-            <button class="btn" @click="showConfig = true">Generar config</button>
-            <button class="btn primary" @click="showCreateSecret = true">
-              <Plus :size="16" />
-              Nuevo secret
-            </button>
-          </div>
-        </div>
-
-        <p v-if="loadingSecrets" class="muted">Cargando secrets…</p>
-
-        <template v-else>
-          <div v-if="secrets.length > 0" class="secrets-toolbar">
-            <div class="search-field">
-              <Search :size="16" class="search-icon" />
-              <input
-                v-model="search"
-                type="search"
-                placeholder="Buscar secret por key o valor…"
-                aria-label="Buscar secrets"
-              />
-              <button
-                v-if="search"
-                type="button"
-                class="btn ghost icon search-clear"
-                @click="search = ''"
-                aria-label="Limpiar búsqueda"
-              >
-                <X :size="16" />
-              </button>
-            </div>
-          </div>
-
-          <div v-if="secrets.length === 0" class="empty-state">
-            <p class="muted">Este consumer no tiene secrets todavía.</p>
-          </div>
-
-          <div v-else-if="filteredSecrets.length === 0" class="empty-state">
-            <p class="muted">No hay secrets que coincidan con «{{ search.trim() }}».</p>
-          </div>
-
-          <div v-else class="secrets-table">
-            <div class="table-row table-head">
-              <span>Key</span>
-              <span>Value</span>
-              <span class="table-actions">Acciones</span>
-            </div>
-            <div v-for="secret in filteredSecrets" :key="secret.id" class="table-row">
-              <div class="key-cell">
-                <code class="key">{{ secret.key }}</code>
-                <span class="badge" :class="secret.isSecret ? 'secret' : 'config'">
-                  {{ secret.isSecret ? 'secret' : 'config' }}
-                </span>
-              </div>
-              <code class="value">{{ !secret.isSecret || visible.has(secret.id) ? secret.value : '••••••••' }}</code>
-              <div class="table-actions row">
-                <button
-                  v-if="secret.isSecret"
-                  class="btn ghost icon"
-                  @click="toggleVisible(secret.id)"
-                  :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
-                  :title="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
-                >
-                  <EyeOff v-if="visible.has(secret.id)" :size="16" />
-                  <Eye v-else :size="16" />
-                </button>
-                <button
-                  class="btn ghost icon"
-                  @click="copy(secret.value)"
-                  aria-label="Copiar"
-                  title="Copiar"
-                >
-                  <Copy :size="16" />
-                </button>
-                <button class="btn ghost" @click="editingSecret = secret">Editar</button>
-                <button class="btn ghost danger-text" @click="deletingSecret = secret">Eliminar</button>
-              </div>
-            </div>
-          </div>
-        </template>
-      </template>
-
-      <div v-else class="empty-state welcome">
-        <div class="welcome-icon">
-          <ShieldCheck :size="40" />
-        </div>
-        <h2>Selecciona un consumer</h2>
-        <p class="muted">
-          Elige un consumer de la barra lateral para ver y gestionar sus secretos.
+      <div class="flex-1 overflow-y-auto p-6">
+        <p
+          v-if="error"
+          class="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {{ error }}
         </p>
+
+        <template v-if="selected">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p class="text-sm text-muted-foreground">
+              {{ filteredSecrets.length }} secret{{ filteredSecrets.length === 1 ? '' : 's' }}
+              <span v-if="search.trim()"> de {{ secrets.length }}</span>
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" @click="onToggleActive">
+                {{ selected.active ? 'Desactivar' : 'Activar' }}
+              </Button>
+              <Button variant="outline" size="sm" @click="editingConsumer = selected">
+                <Pencil />
+                Editar consumer
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                class="text-destructive hover:text-destructive"
+                @click="deletingConsumer = selected"
+              >
+                <Trash2 />
+                Eliminar
+              </Button>
+              <Button variant="outline" size="sm" @click="showConfig = true">
+                <Braces />
+                Generar config
+              </Button>
+              <Button size="sm" @click="showCreateSecret = true">
+                <Plus />
+                Nuevo secret
+              </Button>
+            </div>
+          </div>
+
+          <div v-if="secrets.length > 0" class="relative mb-4 max-w-sm">
+            <Search class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              v-model="search"
+              type="search"
+              class="pl-9"
+              placeholder="Buscar secret por key o valor…"
+              aria-label="Buscar secrets"
+            />
+            <Button
+              v-if="search"
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              class="absolute top-1/2 right-1 -translate-y-1/2"
+              aria-label="Limpiar búsqueda"
+              @click="search = ''"
+            >
+              <X />
+            </Button>
+          </div>
+
+          <div v-if="loadingSecrets" class="space-y-2 rounded-lg border p-4">
+            <Skeleton class="h-9 w-full" />
+            <Skeleton class="h-9 w-full" />
+            <Skeleton class="h-9 w-full" />
+          </div>
+
+          <template v-else>
+            <div
+              v-if="secrets.length === 0"
+              class="rounded-lg border border-dashed px-6 py-12 text-center"
+            >
+              <ShieldCheck class="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p class="text-sm text-muted-foreground">Este consumer no tiene secrets todavía.</p>
+            </div>
+
+            <div
+              v-else-if="filteredSecrets.length === 0"
+              class="rounded-lg border border-dashed px-6 py-12 text-center"
+            >
+              <p class="text-sm text-muted-foreground">
+                No hay secrets que coincidan con «{{ search.trim() }}».
+              </p>
+            </div>
+
+            <div v-else class="overflow-hidden rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Value</TableHead>
+                    <TableHead class="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="secret in filteredSecrets" :key="secret.id">
+                    <TableCell>
+                      <div class="flex items-center gap-2">
+                        <code class="text-sm font-medium text-primary">{{ secret.key }}</code>
+                        <Badge :variant="secret.isSecret ? 'default' : 'secondary'">
+                          {{ secret.isSecret ? 'secret' : 'config' }}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell class="whitespace-normal">
+                      <code class="text-sm break-all text-muted-foreground">
+                        {{ !secret.isSecret || visible.has(secret.id) ? secret.value : '••••••••' }}
+                      </code>
+                    </TableCell>
+                    <TableCell>
+                      <div class="flex justify-end gap-1">
+                        <Button
+                          v-if="secret.isSecret"
+                          variant="ghost"
+                          size="icon-sm"
+                          @click="toggleVisible(secret.id)"
+                          :aria-label="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+                          :title="visible.has(secret.id) ? 'Ocultar valor' : 'Mostrar valor'"
+                        >
+                          <EyeOff v-if="visible.has(secret.id)" />
+                          <Eye v-else />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Copiar"
+                          title="Copiar"
+                          @click="copy(secret.value)"
+                        >
+                          <Copy />
+                        </Button>
+                        <Button variant="ghost" size="sm" @click="editingSecret = secret">
+                          Editar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          class="text-destructive hover:text-destructive"
+                          @click="deletingSecret = secret"
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </template>
+        </template>
+
+        <div
+          v-else
+          class="flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-20 text-center"
+        >
+          <ShieldCheck class="mb-3 size-10 text-primary" />
+          <h2 class="text-lg font-semibold">Selecciona un consumer</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Elige un consumer de la barra lateral para ver y gestionar sus secretos.
+          </p>
+        </div>
       </div>
     </main>
   </div>

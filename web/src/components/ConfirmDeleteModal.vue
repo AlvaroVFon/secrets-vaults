@@ -1,26 +1,36 @@
 <script setup lang="ts">
-import { X } from '@lucide/vue'
+import { buttonVariants } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 defineProps<{ title: string; message: string }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'confirm'): void }>()
 </script>
 
 <template>
-  <div class="backdrop" @click.self="emit('close')">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modal-head">
-        <h2>{{ title }}</h2>
-        <button class="btn ghost icon" @click="emit('close')" aria-label="Cerrar">
-          <X :size="18" />
-        </button>
-      </div>
-      <div class="modal-body">
-        <p>{{ message }}</p>
-        <div class="row end">
-          <button class="btn" @click="emit('close')">Cancelar</button>
-          <button class="btn danger" @click="emit('confirm')">Eliminar</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <AlertDialog :open="true" @update:open="(v) => !v && emit('close')">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{{ title }}</AlertDialogTitle>
+        <AlertDialogDescription>{{ message }}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel @click="emit('close')">Cancelar</AlertDialogCancel>
+        <AlertDialogAction
+          :class="buttonVariants({ variant: 'destructive' })"
+          @click="emit('confirm')"
+        >
+          Eliminar
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
